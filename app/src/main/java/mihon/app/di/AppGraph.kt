@@ -44,6 +44,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import mihon.core.metro.IsDebugBuild
 import mihon.domain.extension.interactor.GetExtensionStoreCountAsFlow
+import mihon.feature.translation.ChapterTranslationJob
+import mihon.feature.translation.TranslationPreferences
+import mihon.feature.translation.TranslationStore
 import nl.adaptivity.xmlutil.serialization.XML
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.category.interactor.GetCategories
@@ -72,6 +75,7 @@ interface AppGraph : ViewModelGraph {
     fun inject(backupCreateJob: BackupCreateJob)
     fun inject(delayedTrackingUpdateJob: DelayedTrackingUpdateJob)
     fun inject(downloadJob: DownloadJob)
+    fun inject(chapterTranslationJob: ChapterTranslationJob)
     fun inject(notificationReceiver: NotificationReceiver)
     fun inject(notificationReceiver: SecureActivityDelegateImpl)
     fun inject(extensionInstallActivity: ExtensionInstallActivity)
@@ -83,6 +87,8 @@ interface AppGraph : ViewModelGraph {
     val basePreferences: BasePreferences
     val uiPreferences: UiPreferences
     val readerPreferences: ReaderPreferences
+    val translationPreferences: TranslationPreferences
+    val translationStore: TranslationStore
     val networkPreferences: NetworkPreferences
     val libraryPreferences: LibraryPreferences
     val sourcePreferences: SourcePreferences

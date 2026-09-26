@@ -297,6 +297,12 @@ dependencies {
 
     // UI libraries
     implementation(libs.material)
+
+    // Yomikae: on-device OCR and translation (Google ML Kit)
+    implementation(libs.mlkit.text.recognition)
+    implementation(libs.mlkit.text.recognition.korean)
+    implementation(libs.mlkit.text.recognition.japanese)
+    implementation(libs.mlkit.translate)
     implementation(libs.flexibleAdapter)
     implementation(libs.photoView)
     implementation(libs.directionalViewPager) {

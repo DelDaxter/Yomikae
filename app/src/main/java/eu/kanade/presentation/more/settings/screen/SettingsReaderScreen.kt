@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.util.system.hasDisplayCutout
 import mihon.app.di.appGraph
+import mihon.feature.translation.TranslationPreferences
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
@@ -28,6 +29,7 @@ object SettingsReaderScreen : SearchableSettings {
     override fun getPreferences(): List<Preference> {
         val context = LocalContext.current
         val readerPref = remember { context.appGraph.readerPreferences }
+        val translationPref = remember { context.appGraph.translationPreferences }
 
         return listOf(
             Preference.PreferenceItem.ListPreference(
@@ -66,6 +68,7 @@ object SettingsReaderScreen : SearchableSettings {
             getWebtoonGroup(readerPreferences = readerPref),
             getNavigationGroup(readerPreferences = readerPref),
             getActionsGroup(readerPreferences = readerPref),
+            getTranslationGroup(translationPref),
         )
     }
 
@@ -418,6 +421,37 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_vertical_navigator_height),
                     onValueChanged = { verticalNavigatorHeightPref.set(it) },
                     enabled = verticalNavigator.isNotEmpty(),
+                ),
+            ),
+        )
+    }
+
+    // Yomikae
+    @Composable
+    private fun getTranslationGroup(translationPreferences: TranslationPreferences): Preference.PreferenceGroup {
+        val languageName: (
+            String,
+        ) -> String = { code -> java.util.Locale(code).getDisplayLanguage(java.util.Locale.getDefault()) }
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.pref_category_translation),
+            preferenceItems = listOf(
+                Preference.PreferenceItem.ListPreference(
+                    preference = translationPreferences.sourceLanguage,
+                    entries = TranslationPreferences.SOURCE_LANGUAGES.associateWith(languageName),
+                    title = stringResource(MR.strings.pref_translation_source_language),
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = translationPreferences.targetLanguage,
+                    entries = TranslationPreferences.TARGET_LANGUAGES.associateWith(languageName),
+                    title = stringResource(MR.strings.pref_translation_target_language),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = translationPreferences.showTranslated,
+                    title = stringResource(MR.strings.pref_translation_show),
+                    subtitle = stringResource(MR.strings.pref_translation_show_summary),
+                ),
+                Preference.PreferenceItem.InfoPreference(
+                    title = stringResource(MR.strings.pref_translation_info),
                 ),
             ),
         )

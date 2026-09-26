@@ -59,6 +59,7 @@ import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.domain.chapter.interactor.FilterChaptersForDownload
 import mihon.domain.source.interactor.UpdateMangaFromRemote
+import mihon.feature.translation.ChapterTranslationJob
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
@@ -697,6 +698,12 @@ class MangaViewModel(
             }
             ChapterDownloadAction.DELETE -> {
                 deleteChapters(items.map { it.chapter })
+            }
+            ChapterDownloadAction.TRANSLATE -> {
+                // Yomikae: translate downloaded chapters in the background.
+                val mangaId = successState?.manga?.id ?: return
+                ChapterTranslationJob.start(context, mangaId, items.map { it.id })
+                context.toast(MR.strings.translation_started)
             }
         }
     }

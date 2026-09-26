@@ -69,6 +69,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
+import mihon.feature.translation.TranslationPreferences
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
@@ -121,6 +122,7 @@ class ReaderViewModel(
     private val coverCache: CoverCache,
     private val chapterCache: ChapterCache,
     private val downloadCache: DownloadCache,
+    private val translationPreferences: TranslationPreferences,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -768,6 +770,16 @@ class ReaderViewModel(
                 eventChannel.send(Event.ReloadViewerChapters)
             }
         }
+    }
+
+    /**
+     * Yomikae: shows or hides translated pages. The page streams decide at read time, so
+     * reloading the viewer is enough to switch.
+     */
+    fun toggleTranslatedPages(): Boolean {
+        val enabled = translationPreferences.showTranslated.toggle()
+        eventChannel.trySend(Event.ReloadViewerChapters)
+        return enabled
     }
 
     fun toggleCropBorders(): Boolean {

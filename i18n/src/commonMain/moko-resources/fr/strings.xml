@@ -894,4 +894,17 @@
     <string name="donationCampaign.paragraph3">Quoi qu\'il en soit, Mihon continuera d\'être maintenu par les contributeurs et moi-même, et restera open-source.</string>
     <string name="donationCampaign.contactPlatform">Discord</string>
     <string name="donationCampaign.dismiss">Faire disparaitre</string>
+
+    <!-- Yomikae : traduction -->
+    <string name="action_translate">Traduire</string>
+    <string name="translation_started">Traduction ajoutée à la file</string>
+    <string name="pref_category_translation">Traduction</string>
+    <string name="pref_translation_source_language">Langue d\'origine</string>
+    <string name="pref_translation_target_language">Langue cible</string>
+    <string name="pref_translation_show">Afficher les pages traduites</string>
+    <string name="pref_translation_show_summary">Quand une traduction existe pour le chapitre</string>
+    <string name="pref_translation_info">La traduction se fait sur cet appareil avec Google ML Kit. Téléchargez un chapitre, puis choisissez Traduire dans son menu. Les modèles de traduction (environ 30 Mo par langue) sont téléchargés à la première utilisation.</string>
+    <string name="translation_notifier_title">Traduction en cours</string>
+    <string name="translation_notifier_progress">%1$s (page %2$d/%3$d)</string>
+    <string name="translation_notifier_error">Échec de la traduction : %1$s</string>
 </resources>
