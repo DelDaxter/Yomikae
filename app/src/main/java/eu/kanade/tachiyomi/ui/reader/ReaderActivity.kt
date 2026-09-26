@@ -525,9 +525,10 @@ class ReaderActivity : BaseActivity() {
             onClickTranslation = {
                 val enabled = viewModel.toggleTranslatedPages()
                 menuToggleToast?.cancel()
+                val hasTranslation = viewModel.hasTranslationForCurrentChapter()
                 menuToggleToast = toast(
                     when {
-                        enabled && !viewModel.hasTranslationForCurrentChapter() -> MR.strings.translation_none_for_chapter
+                        enabled && !hasTranslation -> MR.strings.translation_none_for_chapter
                         enabled -> MR.strings.on
                         else -> MR.strings.off
                     },
