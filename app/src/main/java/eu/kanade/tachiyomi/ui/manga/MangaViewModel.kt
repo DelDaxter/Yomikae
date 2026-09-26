@@ -33,6 +33,7 @@ import eu.kanade.domain.track.model.AutoTrackState
 import eu.kanade.domain.track.service.TrackPreferences
 import eu.kanade.presentation.manga.DownloadAction
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
+import eu.kanade.presentation.manga.components.ChapterTranslationAction
 import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.data.cache.CoverCache
 import eu.kanade.tachiyomi.data.download.DownloadCache
@@ -59,7 +60,6 @@ import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.domain.chapter.interactor.FilterChaptersForDownload
 import mihon.domain.source.interactor.UpdateMangaFromRemote
-import eu.kanade.presentation.manga.components.ChapterTranslationAction
 import mihon.feature.translation.ChapterTranslationJob
 import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationState
@@ -847,11 +847,6 @@ class MangaViewModel(
         toggleAllSelection(false)
     }
 
-    /**
-     * Deletes the given list of chapter.
-     *
-     * @param chapters the list of chapters to delete.
-     */
     /** Yomikae: queue downloaded chapters for translation in the background. */
     fun translateChapters(chapters: List<Chapter>) {
         val state = successState ?: return
@@ -897,6 +892,11 @@ class MangaViewModel(
         translateChapters(state.chapters.filter { it.isDownloaded }.map { it.chapter })
     }
 
+    /**
+     * Deletes the given list of chapter.
+     *
+     * @param chapters the list of chapters to delete.
+     */
     fun deleteChapters(chapters: List<Chapter>) {
         viewModelScope.launchNonCancellable {
             try {
