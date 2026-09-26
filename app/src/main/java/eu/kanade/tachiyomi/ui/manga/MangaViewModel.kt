@@ -59,7 +59,11 @@ import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.domain.chapter.interactor.FilterChaptersForDownload
 import mihon.domain.source.interactor.UpdateMangaFromRemote
+import eu.kanade.presentation.manga.components.ChapterTranslationAction
 import mihon.feature.translation.ChapterTranslationJob
+import mihon.feature.translation.TranslationQueue
+import mihon.feature.translation.TranslationState
+import mihon.feature.translation.TranslationStore
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
@@ -124,6 +128,8 @@ class MangaViewModel(
     private val sourceManager: SourceManager,
     private val refreshTracks: RefreshTracks,
     private val coverCache: CoverCache,
+    private val translationStore: TranslationStore,
+    private val translationQueue: TranslationQueue,
 ) : ViewModel() {
 
     val state: StateFlow<MangaViewModel.State>
@@ -186,7 +192,8 @@ class MangaViewModel(
                 getMangaAndChapters.subscribe(mangaId, applyScanlatorFilter = true).distinctUntilChanged(),
                 downloadCache.changes,
                 downloadManager.queueState,
-            ) { mangaAndChapters, _, _ -> mangaAndChapters }
+                translationQueue.items,
+            ) { mangaAndChapters, _, _, _ -> mangaAndChapters }
                 .collectLatest { (manga, chapters) ->
                     updateSuccessState {
                         it.copy(
@@ -567,11 +574,28 @@ class MangaViewModel(
                 else -> Download.State.NOT_DOWNLOADED
             }
 
+            // Yomikae: translation status of the chapter (queue first, then what is on disk).
+            val queued = translationQueue.items.value.firstOrNull { it.chapterId == chapter.id }
+            val translationState = when (queued?.status) {
+                TranslationQueue.Status.PENDING -> TranslationState.QUEUED
+                TranslationQueue.Status.RUNNING -> TranslationState.RUNNING
+                TranslationQueue.Status.ERROR -> TranslationState.ERROR
+                else -> if (downloaded && translationStore.isChapterTranslated(chapter.id)) {
+                    TranslationState.DONE
+                } else {
+                    TranslationState.NONE
+                }
+            }
+            val translationProgress = queued?.takeIf { it.pageCount > 0 }
+                ?.let { it.page.toFloat() / it.pageCount } ?: 0f
+
             ChapterList.Item(
                 chapter = chapter,
                 downloadState = downloadState,
                 downloadProgress = activeDownload?.progress ?: 0,
                 selected = chapter.id in selectedChapterIds,
+                translationState = translationState,
+                translationProgress = translationProgress,
             )
         }
     }
@@ -701,9 +725,7 @@ class MangaViewModel(
             }
             ChapterDownloadAction.TRANSLATE -> {
                 // Yomikae: translate downloaded chapters in the background.
-                val mangaId = successState?.manga?.id ?: return
-                ChapterTranslationJob.start(context, mangaId, items.map { it.id })
-                context.toast(MR.strings.translation_started)
+                translateChapters(items.map { it.chapter })
             }
         }
     }
@@ -830,6 +852,51 @@ class MangaViewModel(
      *
      * @param chapters the list of chapters to delete.
      */
+    /** Yomikae: queue downloaded chapters for translation in the background. */
+    fun translateChapters(chapters: List<Chapter>) {
+        val state = successState ?: return
+        val downloaded = chapters.filter { chapter ->
+            state.chapters.any { it.id == chapter.id && it.isDownloaded }
+        }
+        if (downloaded.isEmpty()) return
+        ChapterTranslationJob.start(
+            context,
+            state.manga.id,
+            state.manga.title,
+            downloaded.map { ChapterTranslationJob.Request(it.id, it.name) },
+        )
+        context.toast(MR.strings.translation_started)
+        toggleAllSelection(false)
+    }
+
+    /** Yomikae: actions of the translation button on a chapter row. */
+    fun runChapterTranslationActions(items: List<ChapterList.Item>, action: ChapterTranslationAction) {
+        when (action) {
+            ChapterTranslationAction.TRANSLATE -> translateChapters(items.map { it.chapter })
+            ChapterTranslationAction.RETRANSLATE -> {
+                items.forEach { translationStore.deleteChapter(it.id) }
+                translateChapters(items.map { it.chapter })
+            }
+            ChapterTranslationAction.DELETE -> {
+                val ids = items.map { it.id }.toSet()
+                ids.forEach { translationStore.deleteChapter(it) }
+                updateSuccessState { state ->
+                    state.copy(
+                        chapters = state.chapters.map {
+                            if (it.id in ids) it.copy(translationState = TranslationState.NONE) else it
+                        },
+                    )
+                }
+            }
+        }
+    }
+
+    /** Yomikae: translate every downloaded chapter of this manga. */
+    fun translateAllDownloaded() {
+        val state = successState ?: return
+        translateChapters(state.chapters.filter { it.isDownloaded }.map { it.chapter })
+    }
+
     fun deleteChapters(chapters: List<Chapter>) {
         viewModelScope.launchNonCancellable {
             try {
@@ -1213,6 +1280,8 @@ sealed class ChapterList {
         val downloadState: Download.State,
         val downloadProgress: Int,
         val selected: Boolean = false,
+        val translationState: TranslationState = TranslationState.NONE,
+        val translationProgress: Float = 0f,
     ) : ChapterList() {
         val id = chapter.id
         val isDownloaded = downloadState == Download.State.DOWNLOADED

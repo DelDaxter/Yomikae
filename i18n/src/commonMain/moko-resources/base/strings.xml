@@ -1114,6 +1114,22 @@
     <string name="pref_translation_info">Translation runs on this device with Google ML Kit. Download a chapter, then choose Translate from its menu. Translation models (about 30 MB per language) are downloaded on first use.</string>
     <string name="translation_notifier_title">Translating</string>
     <string name="translation_none_for_chapter">No translation for this chapter yet. Download it, then choose Translate in its menu.</string>
+    <string name="action_translate_downloaded">Translate downloaded chapters</string>
+    <string name="action_retranslate">Translate again</string>
+    <string name="action_delete_translation">Delete translation</string>
+    <string name="label_translation_queue">Translation queue</string>
+    <string name="translation_queue_empty">No translation in progress</string>
+    <string name="translation_queue_status_pending">Waiting</string>
+    <string name="translation_queue_status_running">Translating page %1$d of %2$d</string>
+    <string name="translation_queue_status_done">Done</string>
+    <string name="translation_queue_status_error">Failed</string>
+    <string name="translation_queue_status_cancelled">Cancelled</string>
+    <string name="translation_queue_remaining">About %1$s left</string>
+    <string name="translation_queue_per_page">%1$d ms per page on average</string>
+    <string name="translation_queue_summary">%1$d waiting</string>
+    <string name="action_clear_finished">Clear finished</string>
+    <string name="translation_chapter_translated">Translated</string>
+    <string name="translation_chapter_queued">Queued for translation</string>
     <string name="translation_notifier_progress">%1$s (page %2$d/%3$d)</string>
     <string name="translation_notifier_error">Translation failed: %1$s</string>
 </resources>

@@ -269,7 +269,12 @@ class UpdatesViewModel(
                 ChapterDownloadAction.TRANSLATE -> {
                     // Yomikae: one job per manga, chapters queued in order.
                     items.groupBy { it.update.mangaId }.forEach { (mangaId, list) ->
-                        ChapterTranslationJob.start(context, mangaId, list.map { it.update.chapterId })
+                        ChapterTranslationJob.start(
+                            context,
+                            mangaId,
+                            list.first().update.mangaTitle,
+                            list.map { ChapterTranslationJob.Request(it.update.chapterId, it.update.chapterName) },
+                        )
                     }
                     context.toast(MR.strings.translation_started)
                 }

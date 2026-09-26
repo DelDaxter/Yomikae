@@ -906,6 +906,22 @@
     <string name="pref_translation_info">La traduction se fait sur cet appareil avec Google ML Kit. Téléchargez un chapitre, puis choisissez Traduire dans son menu. Les modèles de traduction (environ 30 Mo par langue) sont téléchargés à la première utilisation.</string>
     <string name="translation_notifier_title">Traduction en cours</string>
     <string name="translation_none_for_chapter">Pas encore de traduction pour ce chapitre. Téléchargez-le, puis choisissez Traduire dans son menu.</string>
+    <string name="action_translate_downloaded">Traduire les chapitres téléchargés</string>
+    <string name="action_retranslate">Traduire à nouveau</string>
+    <string name="action_delete_translation">Supprimer la traduction</string>
+    <string name="label_translation_queue">File de traduction</string>
+    <string name="translation_queue_empty">Aucune traduction en cours</string>
+    <string name="translation_queue_status_pending">En attente</string>
+    <string name="translation_queue_status_running">Traduction de la page %1$d sur %2$d</string>
+    <string name="translation_queue_status_done">Terminé</string>
+    <string name="translation_queue_status_error">Échec</string>
+    <string name="translation_queue_status_cancelled">Annulé</string>
+    <string name="translation_queue_remaining">Environ %1$s restantes</string>
+    <string name="translation_queue_per_page">%1$d ms par page en moyenne</string>
+    <string name="translation_queue_summary">%1$d en attente</string>
+    <string name="action_clear_finished">Effacer les terminés</string>
+    <string name="translation_chapter_translated">Traduit</string>
+    <string name="translation_chapter_queued">En attente de traduction</string>
     <string name="translation_notifier_progress">%1$s (page %2$d/%3$d)</string>
     <string name="translation_notifier_error">Échec de la traduction : %1$s</string>
 </resources>

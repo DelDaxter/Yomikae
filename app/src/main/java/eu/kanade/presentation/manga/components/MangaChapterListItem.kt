@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import eu.kanade.tachiyomi.data.download.model.Download
 import me.saket.swipe.SwipeableActionsBox
+import mihon.feature.translation.TranslationState
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.BookmarkAdd
 import mihon.icons.materialsymbols.rounded.BookmarkRemove
@@ -64,6 +65,9 @@ fun MangaChapterListItem(
     onDownloadClick: ((ChapterDownloadAction) -> Unit)?,
     onChapterSwipe: (LibraryPreferences.ChapterSwipeAction) -> Unit,
     modifier: Modifier = Modifier,
+    translationStateProvider: () -> TranslationState = { TranslationState.NONE },
+    translationProgressProvider: () -> Float = { 0f },
+    onTranslateClick: ((ChapterTranslationAction) -> Unit)? = null,
 ) {
     val start = getSwipeAction(
         action = chapterSwipeStartAction,
@@ -171,6 +175,16 @@ fun MangaChapterListItem(
                 }
             }
 
+            // Yomikae: translation button, only once the chapter is on the device.
+            if (onTranslateClick != null && downloadStateProvider() == Download.State.DOWNLOADED) {
+                ChapterTranslationIndicator(
+                    enabled = downloadIndicatorEnabled,
+                    modifier = Modifier.padding(start = 4.dp),
+                    translationStateProvider = translationStateProvider,
+                    translationProgressProvider = translationProgressProvider,
+                    onClick = onTranslateClick,
+                )
+            }
             ChapterDownloadIndicator(
                 enabled = downloadIndicatorEnabled,
                 modifier = Modifier.padding(start = 4.dp),

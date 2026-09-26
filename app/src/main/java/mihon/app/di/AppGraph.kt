@@ -46,6 +46,7 @@ import mihon.core.metro.IsDebugBuild
 import mihon.domain.extension.interactor.GetExtensionStoreCountAsFlow
 import mihon.feature.translation.ChapterTranslationJob
 import mihon.feature.translation.TranslationPreferences
+import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationStore
 import nl.adaptivity.xmlutil.serialization.XML
 import tachiyomi.domain.backup.service.BackupPreferences
@@ -89,6 +90,7 @@ interface AppGraph : ViewModelGraph {
     val readerPreferences: ReaderPreferences
     val translationPreferences: TranslationPreferences
     val translationStore: TranslationStore
+    val translationQueue: TranslationQueue
     val networkPreferences: NetworkPreferences
     val libraryPreferences: LibraryPreferences
     val sourcePreferences: SourcePreferences

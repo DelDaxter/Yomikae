@@ -6,7 +6,9 @@ import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -34,7 +36,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import mihon.app.di.appGraph
 import mihon.feature.support.SupportUsScreen
+import mihon.feature.translation.TranslationQueue
+import mihon.feature.translation.ui.TranslationQueueScreen
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
@@ -60,10 +65,19 @@ data object MoreTab : Tab {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
         val viewModel = metroViewModel<MoreViewModel>()
         val downloadQueueState by viewModel.downloadQueueState.collectAsState()
+        val translationQueue = remember { context.appGraph.translationQueue }
+        val translationItems by translationQueue.items.collectAsState()
         MoreScreen(
             downloadQueueStateProvider = { downloadQueueState },
+            translationQueuePendingProvider = {
+                translationItems.count {
+                    it.status == TranslationQueue.Status.PENDING || it.status == TranslationQueue.Status.RUNNING
+                }
+            },
+            onClickTranslationQueue = { navigator.push(TranslationQueueScreen) },
             downloadedOnly = viewModel.downloadedOnly,
             onDownloadedOnlyChange = { viewModel.downloadedOnly = it },
             incognitoMode = viewModel.incognitoMode,

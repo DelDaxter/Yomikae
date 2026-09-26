@@ -47,6 +47,7 @@ import androidx.compose.ui.util.fastMap
 import eu.kanade.presentation.components.relativeDateText
 import eu.kanade.presentation.manga.components.ChapterDownloadAction
 import eu.kanade.presentation.manga.components.ChapterHeader
+import eu.kanade.presentation.manga.components.ChapterTranslationAction
 import eu.kanade.presentation.manga.components.ExpandableMangaDescription
 import eu.kanade.presentation.manga.components.MangaActionRow
 import eu.kanade.presentation.manga.components.MangaBottomActionMenu
@@ -88,6 +89,7 @@ fun MangaScreen(
     navigateUp: () -> Unit,
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((List<ChapterList.Item>, ChapterTranslationAction) -> Unit)?,
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onWebViewLongClicked: (() -> Unit)?,
@@ -110,6 +112,7 @@ fun MangaScreen(
     onEditCategoryClicked: (() -> Unit)?,
     onEditFetchIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onTranslateDownloadedClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -143,6 +146,7 @@ fun MangaScreen(
             navigateUp = navigateUp,
             onChapterClicked = onChapterClicked,
             onDownloadChapter = onDownloadChapter,
+            onTranslateChapter = onTranslateChapter,
             onAddToLibraryClicked = onAddToLibraryClicked,
             onWebViewClicked = onWebViewClicked,
             onWebViewLongClicked = onWebViewLongClicked,
@@ -159,6 +163,7 @@ fun MangaScreen(
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
             onMigrateClicked = onMigrateClicked,
+            onTranslateDownloadedClicked = onTranslateDownloadedClicked,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -179,6 +184,7 @@ fun MangaScreen(
             navigateUp = navigateUp,
             onChapterClicked = onChapterClicked,
             onDownloadChapter = onDownloadChapter,
+            onTranslateChapter = onTranslateChapter,
             onAddToLibraryClicked = onAddToLibraryClicked,
             onWebViewClicked = onWebViewClicked,
             onWebViewLongClicked = onWebViewLongClicked,
@@ -195,6 +201,7 @@ fun MangaScreen(
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
             onMigrateClicked = onMigrateClicked,
+            onTranslateDownloadedClicked = onTranslateDownloadedClicked,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -218,6 +225,7 @@ private fun MangaScreenSmallImpl(
     navigateUp: () -> Unit,
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((List<ChapterList.Item>, ChapterTranslationAction) -> Unit)?,
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onWebViewLongClicked: (() -> Unit)?,
@@ -241,6 +249,7 @@ private fun MangaScreenSmallImpl(
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onTranslateDownloadedClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -300,6 +309,7 @@ private fun MangaScreenSmallImpl(
                 onClickEditCategory = onEditCategoryClicked,
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
+                onClickTranslateDownloaded = onTranslateDownloadedClicked,
                 onClickEditNotes = onEditNotesClicked,
                 actionModeCounter = selectedChapterCount,
                 onCancelActionMode = { onAllChapterSelected(false) },
@@ -319,6 +329,7 @@ private fun MangaScreenSmallImpl(
                 onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
                 onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                 onDownloadChapter = onDownloadChapter,
+                onTranslateChapter = onTranslateChapter,
                 onMultiDeleteClicked = onMultiDeleteClicked,
                 fillFraction = 1f,
             )
@@ -441,6 +452,7 @@ private fun MangaScreenSmallImpl(
                         chapterSwipeEndAction = chapterSwipeEndAction,
                         onChapterClicked = onChapterClicked,
                         onDownloadChapter = onDownloadChapter,
+                        onTranslateChapter = onTranslateChapter,
                         onChapterSelected = onChapterSelected,
                         onChapterSwipe = onChapterSwipe,
                     )
@@ -460,6 +472,7 @@ fun MangaScreenLargeImpl(
     navigateUp: () -> Unit,
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((List<ChapterList.Item>, ChapterTranslationAction) -> Unit)?,
     onAddToLibraryClicked: () -> Unit,
     onWebViewClicked: (() -> Unit)?,
     onWebViewLongClicked: (() -> Unit)?,
@@ -483,6 +496,7 @@ fun MangaScreenLargeImpl(
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
+    onTranslateDownloadedClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -535,6 +549,7 @@ fun MangaScreenLargeImpl(
                 onClickEditCategory = onEditCategoryClicked,
                 onClickRefresh = onRefresh,
                 onClickMigrate = onMigrateClicked,
+                onClickTranslateDownloaded = onTranslateDownloadedClicked,
                 onClickEditNotes = onEditNotesClicked,
                 onCancelActionMode = { onAllChapterSelected(false) },
                 actionModeCounter = selectedChapterCount,
@@ -558,6 +573,7 @@ fun MangaScreenLargeImpl(
                     onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
                     onMarkPreviousAsReadClicked = onMarkPreviousAsReadClicked,
                     onDownloadChapter = onDownloadChapter,
+                    onTranslateChapter = onTranslateChapter,
                     onMultiDeleteClicked = onMultiDeleteClicked,
                     fillFraction = 0.5f,
                 )
@@ -678,6 +694,7 @@ fun MangaScreenLargeImpl(
                                 chapterSwipeEndAction = chapterSwipeEndAction,
                                 onChapterClicked = onChapterClicked,
                                 onDownloadChapter = onDownloadChapter,
+                                onTranslateChapter = onTranslateChapter,
                                 onChapterSelected = onChapterSelected,
                                 onChapterSwipe = onChapterSwipe,
                             )
@@ -696,6 +713,7 @@ private fun SharedMangaBottomActionMenu(
     onMultiMarkAsReadClicked: (List<Chapter>, markAsRead: Boolean) -> Unit,
     onMarkPreviousAsReadClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((List<ChapterList.Item>, ChapterTranslationAction) -> Unit)?,
     onMultiDeleteClicked: (List<Chapter>) -> Unit,
     fillFraction: Float,
     modifier: Modifier = Modifier,
@@ -723,6 +741,11 @@ private fun SharedMangaBottomActionMenu(
         }.takeIf {
             onDownloadChapter != null && selected.fastAny { it.downloadState != Download.State.DOWNLOADED }
         },
+        onTranslateClicked = {
+            onTranslateChapter!!(selected.toList(), ChapterTranslationAction.TRANSLATE)
+        }.takeIf {
+            onTranslateChapter != null && selected.fastAny { it.downloadState == Download.State.DOWNLOADED }
+        },
         onDeleteClicked = {
             onMultiDeleteClicked(selected.fastMap { it.chapter })
         }.takeIf {
@@ -739,6 +762,7 @@ private fun LazyListScope.sharedChapterItems(
     chapterSwipeEndAction: LibraryPreferences.ChapterSwipeAction,
     onChapterClicked: (Chapter) -> Unit,
     onDownloadChapter: ((List<ChapterList.Item>, ChapterDownloadAction) -> Unit)?,
+    onTranslateChapter: ((List<ChapterList.Item>, ChapterTranslationAction) -> Unit)?,
     onChapterSelected: (ChapterList.Item, Boolean, Boolean) -> Unit,
     onChapterSwipe: (ChapterList.Item, LibraryPreferences.ChapterSwipeAction) -> Unit,
 ) {
@@ -797,6 +821,13 @@ private fun LazyListScope.sharedChapterItems(
                             onToggleSelection = { onChapterSelected(item, !item.selected, false) },
                             onChapterClicked = onChapterClicked,
                         )
+                    },
+                    translationStateProvider = { item.translationState },
+                    translationProgressProvider = { item.translationProgress },
+                    onTranslateClick = if (onTranslateChapter != null) {
+                        { onTranslateChapter(listOf(item), it) }
+                    } else {
+                        null
                     },
                     onDownloadClick = if (onDownloadChapter != null) {
                         { onDownloadChapter(listOf(item), it) }

@@ -1,8 +1,11 @@
 package mihon.feature.translation
 
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import androidx.lifecycle.asFlow
 import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -17,15 +20,20 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.data.notification.Notifications
+import eu.kanade.tachiyomi.ui.main.MainActivity
 import eu.kanade.tachiyomi.ui.reader.loader.DownloadPageLoader
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
 import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import logcat.LogPriority
 import mihon.app.di.AppGraph
+import mihon.app.di.appGraph
 import mihon.core.metro.metroGraph
+import tachiyomi.core.common.Constants
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.interactor.GetChapter
@@ -65,6 +73,8 @@ class ChapterTranslationJob(
 
     @Inject private lateinit var preferences: TranslationPreferences
 
+    @Inject private lateinit var queue: TranslationQueue
+
     init {
         graph.inject(this)
     }
@@ -73,6 +83,7 @@ class ChapterTranslationJob(
         val notification = context.notificationBuilder(Notifications.CHANNEL_DOWNLOADER_PROGRESS) {
             setContentTitle(context.stringResource(MR.strings.translation_notifier_title))
             setSmallIcon(R.drawable.ic_translate_24dp)
+            setContentIntent(openQueuePendingIntent(context))
             setOngoing(true)
             setOnlyAlertOnce(true)
         }.build()
@@ -102,13 +113,21 @@ class ChapterTranslationJob(
         try {
             translator.prepare()
 
-            for (chapterId in chapterIds) {
+            val chapters = chapterIds.toList().mapNotNull { getChapter.await(it) }
+            // After a process restart the in-memory queue is empty: register what we work on.
+            queue.enqueue(
+                chapters
+                    .filter { queue.statusOf(it.id) == null }
+                    .map { TranslationQueue.Item(it.id, manga.id, manga.title, it.name) },
+            )
+
+            for (chapter in chapters) {
                 if (isStopped) break
-                val chapter = getChapter.await(chapterId) ?: continue
                 try {
                     translateChapter(translator, manga, source, chapter, sourceLanguage, targetLanguage)
                 } catch (e: Exception) {
                     failures++
+                    queue.markError(chapter.id, e.message)
                     logcat(LogPriority.ERROR, e) { "Translation failed for ${chapter.name}" }
                     context.notify(ID_TRANSLATION_ERROR, Notifications.CHANNEL_DOWNLOADER_ERROR) {
                         setContentTitle(context.stringResource(MR.strings.translation_notifier_error, chapter.name))
@@ -118,6 +137,7 @@ class ChapterTranslationJob(
                 }
             }
         } catch (e: Exception) {
+            chapterIds.forEach { queue.markError(it, e.message) }
             logcat(LogPriority.ERROR, e) { "Translation job failed" }
             context.notify(ID_TRANSLATION_ERROR, Notifications.CHANNEL_DOWNLOADER_ERROR) {
                 setContentTitle(context.stringResource(MR.strings.translation_notifier_error, manga.title))
@@ -128,6 +148,7 @@ class ChapterTranslationJob(
         } finally {
             translator.close()
             context.cancelNotification(ID_TRANSLATION_PROGRESS)
+            if (isStopped) queue.cancelAll()
         }
 
         return if (failures == 0) Result.success() else Result.failure()
@@ -151,6 +172,7 @@ class ChapterTranslationJob(
             val pages = loader.getPages()
             logcat { "Translation: ${pages.size} pages found" }
             if (pages.isEmpty()) error(context.stringResource(MR.strings.page_list_empty_error))
+            queue.markRunning(chapter.id, pages.size)
 
             val dir = store.chapterDir(chapter.id, sourceLanguage, targetLanguage).apply { mkdirs() }
 
@@ -159,22 +181,30 @@ class ChapterTranslationJob(
                 showProgress(chapter.name, index + 1, pages.size)
 
                 val target = store.pageFile(chapter.id, page.index, sourceLanguage, targetLanguage)
-                if (target.exists()) return@forEachIndexed
+                if (target.exists()) {
+                    queue.markPage(chapter.id, index + 1, pageMillis = null)
+                    return@forEachIndexed
+                }
 
+                val started = System.currentTimeMillis()
                 val openStream = page.stream ?: return@forEachIndexed
-                logcat { "Translation: page ${page.index} start" }
                 // Read the whole page once, like the reader does, then work from memory.
                 val imageBytes = openStream().use { it.readBytes() }
-                logcat { "Translation: page ${page.index} read (${imageBytes.size} bytes)" }
-                val jpeg = translator.translatePage(imageBytes) ?: return@forEachIndexed
-                logcat { "Translation: page ${page.index} rendered (${jpeg.size} bytes)" }
-
-                val tmp = File(dir, target.name + ".tmp")
-                tmp.writeBytes(jpeg)
-                if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
+                val jpeg = translator.translatePage(imageBytes)
+                if (jpeg != null) {
+                    val tmp = File(dir, target.name + ".tmp")
+                    tmp.writeBytes(jpeg)
+                    if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
+                }
+                val elapsed = System.currentTimeMillis() - started
+                logcat { "Translation: page ${page.index} done in $elapsed ms (${jpeg?.size ?: 0} bytes)" }
+                queue.markPage(chapter.id, index + 1, elapsed)
             }
 
-            if (!isStopped) store.markDone(chapter.id, sourceLanguage, targetLanguage)
+            if (!isStopped) {
+                store.markDone(chapter.id, sourceLanguage, targetLanguage)
+                queue.markDone(chapter.id)
+            }
         } finally {
             loader.recycle()
         }
@@ -187,11 +217,15 @@ class ChapterTranslationJob(
                 context.stringResource(MR.strings.translation_notifier_progress, chapterName, current, total),
             )
             setSmallIcon(R.drawable.ic_translate_24dp)
+            setContentIntent(openQueuePendingIntent(context))
             setProgress(total, current, false)
             setOngoing(true)
             setOnlyAlertOnce(true)
         }
     }
+
+    /** What the UI asks for: enough to show the chapter in the queue before the job runs. */
+    data class Request(val chapterId: Long, val chapterName: String)
 
     companion object {
         private const val TAG = "ChapterTranslation"
@@ -201,7 +235,13 @@ class ChapterTranslationJob(
         const val ID_TRANSLATION_PROGRESS = -801
         const val ID_TRANSLATION_ERROR = -802
 
-        fun start(context: Context, mangaId: Long, chapterIds: List<Long>) {
+        fun start(context: Context, mangaId: Long, mangaTitle: String, requests: List<Request>) {
+            if (requests.isEmpty()) return
+            context.appGraph.translationQueue.enqueue(
+                requests.map { TranslationQueue.Item(it.chapterId, mangaId, mangaTitle, it.chapterName) },
+            )
+            val chapterIds = requests.map { it.chapterId }
+
             val request = OneTimeWorkRequestBuilder<ChapterTranslationJob>()
                 .addTag(TAG)
                 // Short, linear retry delay: the default exponential backoff made a job wait
@@ -223,8 +263,30 @@ class ChapterTranslationJob(
             workManager.enqueueUniqueWork(TAG, policy, request)
         }
 
+        /** Opens the app on the translation queue screen (used by the notifications). */
+        fun openQueuePendingIntent(context: Context): PendingIntent {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                action = Constants.SHORTCUT_TRANSLATIONS
+            }
+            return PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            )
+        }
+
         fun stop(context: Context) {
             WorkManager.getInstance(context).cancelUniqueWork(TAG)
+            context.appGraph.translationQueue.cancelAll()
+        }
+
+        fun isRunningFlow(context: Context): Flow<Boolean> {
+            return WorkManager.getInstance(context)
+                .getWorkInfosForUniqueWorkLiveData(TAG)
+                .asFlow()
+                .map { list -> list.any { it.state == WorkInfo.State.RUNNING } }
         }
     }
 }
