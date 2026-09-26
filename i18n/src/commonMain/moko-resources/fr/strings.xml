@@ -905,6 +905,7 @@
     <string name="pref_translation_show_summary">Quand une traduction existe pour le chapitre</string>
     <string name="pref_translation_info">La traduction se fait sur cet appareil avec Google ML Kit. Téléchargez un chapitre, puis choisissez Traduire dans son menu. Les modèles de traduction (environ 30 Mo par langue) sont téléchargés à la première utilisation.</string>
     <string name="translation_notifier_title">Traduction en cours</string>
+    <string name="translation_none_for_chapter">Pas encore de traduction pour ce chapitre. Téléchargez-le, puis choisissez Traduire dans son menu.</string>
     <string name="translation_notifier_progress">%1$s (page %2$d/%3$d)</string>
     <string name="translation_notifier_error">Échec de la traduction : %1$s</string>
 </resources>

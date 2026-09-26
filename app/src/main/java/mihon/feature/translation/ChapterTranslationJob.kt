@@ -3,10 +3,12 @@ package mihon.feature.translation
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
@@ -32,6 +34,7 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 /**
  * Yomikae: background job that translates downloaded chapters, one page after the other, and
@@ -139,33 +142,42 @@ class ChapterTranslationJob(
         targetLanguage: String,
     ) {
         // Reuse the reader's own loader so page order is exactly what the reader will show.
+        // The loader must stay open until the last page is read: for CBZ chapters the page
+        // streams come from a native archive reader that recycle() closes.
         val readerChapter = ReaderChapter(chapter)
         val loader = DownloadPageLoader(readerChapter, manga, source, downloadManager, downloadProvider)
-        val pages = try {
-            loader.getPages()
+        try {
+            logcat { "Translation: listing pages of ${chapter.name}" }
+            val pages = loader.getPages()
+            logcat { "Translation: ${pages.size} pages found" }
+            if (pages.isEmpty()) error(context.stringResource(MR.strings.page_list_empty_error))
+
+            val dir = store.chapterDir(chapter.id, sourceLanguage, targetLanguage).apply { mkdirs() }
+
+            pages.forEachIndexed { index, page ->
+                if (isStopped) return
+                showProgress(chapter.name, index + 1, pages.size)
+
+                val target = store.pageFile(chapter.id, page.index, sourceLanguage, targetLanguage)
+                if (target.exists()) return@forEachIndexed
+
+                val openStream = page.stream ?: return@forEachIndexed
+                logcat { "Translation: page ${page.index} start" }
+                // Read the whole page once, like the reader does, then work from memory.
+                val imageBytes = openStream().use { it.readBytes() }
+                logcat { "Translation: page ${page.index} read (${imageBytes.size} bytes)" }
+                val jpeg = translator.translatePage(imageBytes) ?: return@forEachIndexed
+                logcat { "Translation: page ${page.index} rendered (${jpeg.size} bytes)" }
+
+                val tmp = File(dir, target.name + ".tmp")
+                tmp.writeBytes(jpeg)
+                if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
+            }
+
+            if (!isStopped) store.markDone(chapter.id, sourceLanguage, targetLanguage)
         } finally {
             loader.recycle()
         }
-        if (pages.isEmpty()) error(context.stringResource(MR.strings.page_list_empty_error))
-
-        val dir = store.chapterDir(chapter.id, sourceLanguage, targetLanguage).apply { mkdirs() }
-
-        pages.forEachIndexed { index, page ->
-            if (isStopped) return
-            showProgress(chapter.name, index + 1, pages.size)
-
-            val target = store.pageFile(chapter.id, page.index, sourceLanguage, targetLanguage)
-            if (target.exists()) return@forEachIndexed
-
-            val openStream = page.stream ?: return@forEachIndexed
-            val jpeg = translator.translatePage(openStream) ?: return@forEachIndexed
-
-            val tmp = File(dir, target.name + ".tmp")
-            tmp.writeBytes(jpeg)
-            if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
-        }
-
-        if (!isStopped) store.markDone(chapter.id, sourceLanguage, targetLanguage)
     }
 
     private fun showProgress(chapterName: String, current: Int, total: Int) {
@@ -192,6 +204,9 @@ class ChapterTranslationJob(
         fun start(context: Context, mangaId: Long, chapterIds: List<Long>) {
             val request = OneTimeWorkRequestBuilder<ChapterTranslationJob>()
                 .addTag(TAG)
+                // Short, linear retry delay: the default exponential backoff made a job wait
+                // minutes after a failure, which looks like "nothing happens" to the user.
+                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                 .setInputData(
                     workDataOf(
                         KEY_MANGA_ID to mangaId,
@@ -199,8 +214,13 @@ class ChapterTranslationJob(
                     ),
                 )
                 .build()
-            WorkManager.getInstance(context)
-                .enqueueUniqueWork(TAG, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
+            val workManager = WorkManager.getInstance(context)
+            // Append behind a running job; otherwise replace whatever is left (a job stuck in a
+            // retry delay after a crash would keep the new request waiting for minutes).
+            val isRunning = workManager.getWorkInfosForUniqueWork(TAG).get()
+                .any { it.state == WorkInfo.State.RUNNING }
+            val policy = if (isRunning) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE
+            workManager.enqueueUniqueWork(TAG, policy, request)
         }
 
         fun stop(context: Context) {

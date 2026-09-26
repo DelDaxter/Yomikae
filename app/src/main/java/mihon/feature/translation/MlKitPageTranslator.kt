@@ -19,7 +19,6 @@ import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
-import java.io.InputStream
 
 /**
  * Yomikae: first translation engine, built only on Google ML Kit (no native library to build).
@@ -67,8 +66,8 @@ class MlKitPageTranslator(
      * Returns the translated page as JPEG bytes, or null when the page has no text worth
      * translating (the caller then keeps the original).
      */
-    suspend fun translatePage(openStream: () -> InputStream): ByteArray? {
-        val bitmap = decode(openStream) ?: return null
+    suspend fun translatePage(imageBytes: ByteArray): ByteArray? {
+        val bitmap = decode(imageBytes) ?: return null
         try {
             val blocks = recognize(bitmap)
             if (blocks.isEmpty()) return null
@@ -107,6 +106,7 @@ class MlKitPageTranslator(
      * centre is far from the cut.
      */
     private suspend fun recognize(bitmap: Bitmap): List<OcrBlock> {
+        logcat { "Translation: OCR on ${bitmap.width}x${bitmap.height}" }
         if (bitmap.height <= TILE_HEIGHT) {
             return recognizer.process(InputImage.fromBitmap(bitmap, 0)).await().toOcrBlocks(0)
         }
@@ -139,9 +139,10 @@ class MlKitPageTranslator(
         return result
     }
 
-    private fun decode(openStream: () -> InputStream): Bitmap? {
+    private fun decode(imageBytes: ByteArray): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        openStream().use { BitmapFactory.decodeStream(it, null, bounds) }
+        BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, bounds)
+        logcat { "Translation: bounds ${bounds.outWidth}x${bounds.outHeight}" }
         val pixels = bounds.outWidth.toLong() * bounds.outHeight.toLong()
         if (pixels <= 0) return null
         if (pixels > MAX_PIXELS) {
@@ -152,7 +153,9 @@ class MlKitPageTranslator(
             inPreferredConfig = Bitmap.Config.ARGB_8888
             inMutable = true
         }
-        return openStream().use { BitmapFactory.decodeStream(it, null, options) }
+        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size, options)
+        logcat { "Translation: decoded ${bitmap?.width}x${bitmap?.height}" }
+        return bitmap
     }
 
     override fun close() {

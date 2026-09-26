@@ -70,6 +70,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
 import mihon.feature.translation.TranslationPreferences
+import mihon.feature.translation.TranslationStore
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
@@ -123,6 +124,7 @@ class ReaderViewModel(
     private val chapterCache: ChapterCache,
     private val downloadCache: DownloadCache,
     private val translationPreferences: TranslationPreferences,
+    private val translationStore: TranslationStore,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -780,6 +782,12 @@ class ReaderViewModel(
         val enabled = translationPreferences.showTranslated.toggle()
         eventChannel.trySend(Event.ReloadViewerChapters)
         return enabled
+    }
+
+    /** Yomikae: true when at least one page of the current chapter has a translation. */
+    fun hasTranslationForCurrentChapter(): Boolean {
+        val chapterId = state.value.viewerChapters?.currChapter?.chapter?.id ?: return false
+        return translationStore.hasAnyTranslatedPage(chapterId)
     }
 
     fun toggleCropBorders(): Boolean {
