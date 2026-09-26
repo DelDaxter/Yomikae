@@ -25,7 +25,7 @@ val Project.Config: BuildConfig get() = object : BuildConfig {
         ?: Distribution.LOCAL
 
     override val includeTelemetry: Boolean = project.flag("include-telemetry")
-        ?: (distribution == Distribution.CI || distribution == Distribution.GITHUB)
+        ?: false // Yomikae: no Firebase project, telemetry off unless -Pinclude-telemetry
 
     override val uploadCrashlyticsMapping: Boolean = includeTelemetry && (distribution == Distribution.GITHUB)
 
