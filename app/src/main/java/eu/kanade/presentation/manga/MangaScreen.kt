@@ -847,7 +847,7 @@ private fun LazyListScope.sharedChapterItems(
                     },
                     translationStateProvider = { item.translationState },
                     translationProgressProvider = { item.translationProgress },
-                    onTranslateClick = if (onTranslateChapter != null) {
+                    onTranslateClick = if (onTranslateChapter != null && item.translatable) {
                         { onTranslateChapter(listOf(item), it) }
                     } else {
                         null

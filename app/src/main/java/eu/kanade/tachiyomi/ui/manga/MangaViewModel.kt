@@ -652,7 +652,7 @@ class MangaViewModel(
             translatedLabel = context.stringResource(MR.strings.merge_translated_label),
         )
         val items = rows.map { it.chapter }.toChapterListItems { id -> mangas[id] ?: manga }
-        return items.zip(rows) { item, row -> item.copy(sourceLabel = row.label) }
+        return items.zip(rows) { item, row -> item.copy(sourceLabel = row.label, translatable = !row.inTargetLanguage) }
     }
 
     /** The entry a chapter belongs to: this one, or a member of its group. */
@@ -1450,6 +1450,8 @@ sealed class ChapterList {
         val translationProgress: Float = 0f,
         /** Yomikae: "EN · Webtoons.com" on the rows of a unified entry. */
         val sourceLabel: String? = null,
+        /** Yomikae: false for a row already in the reading language (no translate button). */
+        val translatable: Boolean = true,
     ) : ChapterList() {
         val id = chapter.id
         val isDownloaded = downloadState == Download.State.DOWNLOADED

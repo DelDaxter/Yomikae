@@ -52,6 +52,8 @@ object MergedChapters {
         val label: String,
         /** How many other versions of this chapter exist in the group. */
         val alternatives: Int,
+        /** True when the row is already in the reading language: nothing to translate. */
+        val inTargetLanguage: Boolean,
     )
 
     fun merge(
@@ -97,6 +99,7 @@ object MergedChapters {
                 chapter = best.chapter.copy(read = read),
                 label = label,
                 alternatives = candidates.size - 1,
+                inTargetLanguage = best.member.language == targetLanguage,
             )
         }
 
@@ -109,7 +112,7 @@ object MergedChapters {
                 }.thenByDescending { it.chapter.dateUpload },
             )
             .mapIndexed { index, row ->
-                Row(row.chapter.copy(sourceOrder = index.toLong()), row.label, row.alternatives)
+                Row(row.chapter.copy(sourceOrder = index.toLong()), row.label, row.alternatives, row.inTargetLanguage)
             }
     }
 
