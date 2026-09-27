@@ -312,7 +312,7 @@ private fun MangaScreenSmallImpl(
                 label = "Top Bar Background",
             )
             MangaToolbar(
-                title = state.manga.title,
+                title = state.title,
                 hasFilters = state.filterActive,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterClicked,
@@ -408,6 +408,7 @@ private fun MangaScreenSmallImpl(
                             isStubSource = remember { state.source is StubSource },
                             onCoverClick = onCoverClicked,
                             doSearch = onSearch,
+                            displayTitle = state.displayTitle,
                             alternativeTitle = state.alternativeTitle,
                         )
                     }
@@ -559,7 +560,7 @@ fun MangaScreenLargeImpl(
             }
             MangaToolbar(
                 modifier = Modifier.onSizeChanged { topBarHeight = it.height },
-                title = state.manga.title,
+                title = state.title,
                 hasFilters = state.filterActive,
                 navigateUp = navigateUp,
                 onClickFilter = onFilterButtonClicked,
@@ -656,6 +657,7 @@ fun MangaScreenLargeImpl(
                             isStubSource = remember { state.source is StubSource },
                             onCoverClick = onCoverClicked,
                             doSearch = onSearch,
+                            displayTitle = state.displayTitle,
                             alternativeTitle = state.alternativeTitle,
                         )
                         MangaActionRow(

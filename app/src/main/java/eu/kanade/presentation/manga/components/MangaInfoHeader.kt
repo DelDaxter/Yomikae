@@ -121,6 +121,8 @@ fun MangaInfoBox(
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    /** Yomikae: unified entry, the title shown first (reading language); null = the entry's own. */
+    displayTitle: String? = null,
     /** Yomikae: the other edition's title of a unified entry, under the main title. */
     alternativeTitle: String? = null,
 ) {
@@ -159,6 +161,7 @@ fun MangaInfoBox(
                     isStubSource = isStubSource,
                     onCoverClick = onCoverClick,
                     doSearch = doSearch,
+                    displayTitle = displayTitle,
                     alternativeTitle = alternativeTitle,
                 )
             } else {
@@ -169,6 +172,7 @@ fun MangaInfoBox(
                     isStubSource = isStubSource,
                     onCoverClick = onCoverClick,
                     doSearch = doSearch,
+                    displayTitle = displayTitle,
                     alternativeTitle = alternativeTitle,
                 )
             }
@@ -354,6 +358,7 @@ private fun MangaAndSourceTitlesLarge(
     isStubSource: Boolean,
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
+    displayTitle: String? = null,
     alternativeTitle: String? = null,
 ) {
     Column(
@@ -373,7 +378,7 @@ private fun MangaAndSourceTitlesLarge(
         )
         Spacer(modifier = Modifier.height(16.dp))
         MangaContentInfo(
-            title = manga.title,
+            title = displayTitle ?: manga.title,
             author = manga.author,
             artist = manga.artist,
             status = manga.status,
@@ -394,6 +399,7 @@ private fun MangaAndSourceTitlesSmall(
     isStubSource: Boolean,
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
+    displayTitle: String? = null,
     alternativeTitle: String? = null,
 ) {
     Row(
@@ -418,7 +424,7 @@ private fun MangaAndSourceTitlesSmall(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             MangaContentInfo(
-                title = manga.title,
+                title = displayTitle ?: manga.title,
                 author = manga.author,
                 artist = manga.artist,
                 status = manga.status,

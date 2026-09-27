@@ -226,11 +226,13 @@ class MangaViewModel(
                 .collectLatest { (mangaAndChapters, members) ->
                     val (manga, chapters) = mangaAndChapters
                     val items = mergedChapterItems(manga, chapters, members)
+                    val displayTitle = groupDisplayTitle
                     val alternativeTitle = groupAlternativeTitle
                     updateSuccessState {
                         it.copy(
                             manga = manga,
                             chapters = items,
+                            displayTitle = displayTitle,
                             alternativeTitle = alternativeTitle,
                         )
                     }
@@ -619,9 +621,11 @@ class MangaViewModel(
     private var groupMangas: Map<Long, Manga> = emptyMap()
 
     /**
-     * Title of the group's edition in the other language: under a Korean title, the English
-     * one (or the original under an English primary). Null when there is no unified entry.
+     * Titles of a unified entry: the main one is the edition in the reading language, the
+     * secondary one the original (Simon: "the translated title first, the original under it").
+     * Both null when there is no unified entry or no other edition.
      */
+    private var groupDisplayTitle: String? = null
     private var groupAlternativeTitle: String? = null
 
     private suspend fun mergedChapterItems(
@@ -631,6 +635,7 @@ class MangaViewModel(
     ): List<ChapterList.Item> {
         if (members.isEmpty()) {
             groupMangas = emptyMap()
+            groupDisplayTitle = null
             groupAlternativeTitle = null
             return chapters.toChapterListItems(manga)
         }
@@ -655,10 +660,17 @@ class MangaViewModel(
         val target = translationPreferences.targetLanguage.get()
         val primaryLanguage = infos[manga.id]?.language
         val wantedLanguage = if (primaryLanguage == target) rawLanguage else target
-        groupAlternativeTitle = mangas.values
+        val other = mangas.values
             .firstOrNull { it.id != manga.id && infos[it.id]?.language == wantedLanguage }
             ?.title
             ?.takeIf { it.isNotBlank() && !it.equals(manga.title, ignoreCase = true) }
+        if (primaryLanguage == target) {
+            groupDisplayTitle = null
+            groupAlternativeTitle = other
+        } else {
+            groupDisplayTitle = other
+            groupAlternativeTitle = other?.let { manga.title }
+        }
         val rows = MergedChapters.merge(
             chaptersByManga = members.associate { it.first.id to it.second } + (manga.id to chapters),
             members = infos,
@@ -1388,9 +1400,13 @@ class MangaViewModel(
             val dialog: Dialog? = null,
             val hasPromptedToAddBefore: Boolean = false,
             val hideMissingChapters: Boolean = false,
-            /** Yomikae: title of the unified entry's other edition, shown under the title. */
+            /** Yomikae: unified entry, title in the reading language (null = the entry's own). */
+            val displayTitle: String? = null,
+
+            /** Yomikae: unified entry, the other edition's title, shown under the main one. */
             val alternativeTitle: String? = null,
         ) : State {
+            val title: String get() = displayTitle ?: manga.title
             val processedChapters by lazy {
                 chapters.applyFilters(manga).toList()
             }
