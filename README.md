@@ -36,19 +36,14 @@ disponible (moins bon, mais léger).
 1. **Télécharge l'APK** dans les [Releases](https://github.com/DelDaxter/Yomikae/releases) (fichier
    `Yomikae-…-arm64.apk`) et ouvre-le. Android te demandera d'autoriser l'installation depuis cette source : accepte.
    Yomikae s'installe à côté de tes autres lecteurs sans les remplacer.
-2. **Ajoute des sources.** Yomikae n'a aucune source intégrée. Dans l'app : *Plus → Paramètres →
-   Explorer → Dépôts d'extensions*, ajoute :
-   - `https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json` (sources anglaises, dont Webtoons.com) ;
-   - `https://raw.githubusercontent.com/oneulddu/Korean-Mihon-Extensions/repo/index.min.json` (sources coréennes,
-     dont Naver Webtoon).
-
-   Puis *Explorer → Extensions* et installe celles que tu veux (par exemple **Naver Webtoon** pour les raws coréens
-   officiels et **Webtoons.com** pour l'anglais officiel). Sur Naver, cherche les titres en coréen.
+2. **Installe des sources.** Les dépôts d'extensions sont déjà enregistrés au premier lancement : va dans
+   *Explorer → Extensions* et installe celles que tu veux, par exemple **Naver Webtoon** pour les raws coréens
+   officiels et **Webtoons.com** pour l'anglais officiel. Sur Naver, cherche les titres en coréen.
 3. **Prépare la traduction** : *Plus → Paramètres → Traduction*.
    - *Langue d'origine* : coréen. *Langue cible* : anglais.
    - *Moteur de traduction* : **Sur cet appareil**. Dans *Modèle embarqué*, appuie sur le modèle pour le télécharger
      (1,8 Go, une seule fois, en Wi-Fi).
-   - *Lecture du texte (OCR)* : PaddleOCR (18 Mo, téléchargés au premier usage).
+   - *Lecture du texte (OCR)* : PaddleOCR, déjà dans l'APK, rien à télécharger.
 4. **Traduis un chapitre** : télécharge un chapitre coréen (icône ⬇ sur sa ligne), puis appuie sur l'icône de
    traduction 文A qui apparaît à côté. Suis l'avancement dans *Plus → File de traduction*. Ouvre le chapitre : il est
    traduit. Compte 3 à 4 secondes par page sur un téléphone récent.
@@ -67,17 +62,15 @@ disponible (moins bon, mais léger).
 - **Glossaires** : un glossaire global (termes de genre, noblesse, formes d'adresse) est fourni et modifiable dans
   *Traduction → Glossaire global* ; chaque série a le sien dans sa mémoire de série.
 
-## Compiler soi-même
+## Mises à jour
 
-JDK 21 et le SDK Android (API 36). Dans `local.properties`, `sdk.dir` doit utiliser des barres obliques
-(`S:/Android/Sdk` sur Windows). Puis :
+Chaque version est construite et signée automatiquement sur GitHub (dossier *Releases*). L'app te prévient quand une
+nouvelle version est disponible et l'installe par-dessus l'ancienne, sans rien perdre.
 
-```
-./gradlew :app:assembleDebug
-```
+## Pour les développeurs
 
-L'APK est dans `app/build/outputs/apk/debug/`. L'app de debug s'appelle `app.yomikae.dev` et cohabite avec la
-version normale.
+JDK 21 et SDK Android (API 36), puis `./gradlew :app:assembleDebug`. L'app de debug (`app.yomikae.dev`) cohabite
+avec la version normale.
 
 ## Licences
 

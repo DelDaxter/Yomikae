@@ -59,7 +59,9 @@ class ModelDownloader(private val context: Context) {
             val target = file(group, spec)
             if (target.exists() && target.length() == spec.sizeBytes) continue
             val tmp = File(target.path + ".part")
-            download(spec, tmp, progress)
+            // Small models ship inside the APK (assets/models/<group>/), so the first use needs
+            // no network; only the big ones are downloaded.
+            if (!copyFromAssets(group, spec, tmp)) download(spec, tmp, progress)
             val digest = sha256(tmp)
             if (!digest.equals(spec.sha256, ignoreCase = true)) {
                 tmp.delete()
@@ -68,6 +70,13 @@ class ModelDownloader(private val context: Context) {
             }
             if (!tmp.renameTo(target)) error("Cannot store ${spec.fileName}")
         }
+    }
+
+    private fun copyFromAssets(group: String, spec: Spec, tmp: File): Boolean {
+        val stream = runCatching { context.assets.open("models/$group/${spec.fileName}") }.getOrNull() ?: return false
+        stream.use { input -> tmp.outputStream().use { out -> input.copyTo(out) } }
+        logcat { "Model ${spec.fileName} taken from the APK assets" }
+        return tmp.length() == spec.sizeBytes
     }
 
     private fun download(spec: Spec, tmp: File, progress: Progress?) {
