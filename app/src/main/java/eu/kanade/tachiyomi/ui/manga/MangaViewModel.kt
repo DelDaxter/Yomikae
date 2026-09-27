@@ -664,8 +664,14 @@ class MangaViewModel(
         val manga = successState?.manga ?: return
         viewModelScope.launchIO {
             val rawLanguage = translationPreferences.sourceLanguage.get()
+            // Entries already merged elsewhere, and other primaries, are not offered.
+            val members = groupStore.groupOfPrimary(manga.id)?.memberIds.orEmpty().toSet()
+            val taken = groupStore.groups.value
+                .filter { it.primaryMangaId != manga.id }
+                .flatMap { it.memberIds + it.primaryMangaId }
+                .toSet()
             val candidates = getFavorites.await()
-                .filter { it.id != manga.id }
+                .filter { it.id != manga.id && (it.id !in taken || it.id in members) }
                 .sortedBy { it.title }
                 .map { m ->
                     val source = sourceManager.getOrStub(m.source)
@@ -673,7 +679,6 @@ class MangaViewModel(
                     val language = MergedChapters.entryLanguage(m.title, source.lang, hasReference, rawLanguage) ?: "?"
                     MergeCandidate(m.id, m.title, "${language.uppercase()} · ${source.name}")
                 }
-            val members = groupStore.groupOfPrimary(manga.id)?.memberIds.orEmpty().toSet()
             updateSuccessState { it.copy(dialog = Dialog.Merge(candidates, members)) }
         }
     }
