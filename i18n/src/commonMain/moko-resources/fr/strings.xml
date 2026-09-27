@@ -906,6 +906,22 @@
     <string name="pref_translation_info">La traduction se fait sur cet appareil avec Google ML Kit. Téléchargez un chapitre, puis choisissez Traduire dans son menu. Les modèles de traduction (environ 30 Mo par langue) sont téléchargés à la première utilisation.</string>
     <string name="translation_notifier_title">Traduction en cours</string>
     <string name="pref_translation_engine">Moteur de traduction</string>
+    <string name="action_series_memory">Mémoire de série</string>
+    <string name="series_memory_title">Mémoire de série</string>
+    <string name="series_memory_reference">Édition de référence (déjà traduite)</string>
+    <string name="series_memory_reference_none">Aucune. Choisis la même série dans ta bibliothèque, traduite par des humains.</string>
+    <string name="series_memory_pick_reference">Choisir l\'édition de référence</string>
+    <string name="series_memory_extract">Lire le texte de la référence</string>
+    <string name="series_memory_extract_summary">Lit les chapitres téléchargés de la référence (une fois, puis pour les nouveaux chapitres)</string>
+    <string name="series_memory_rebuild">Apparier les bulles</string>
+    <string name="series_memory_stats">%1$d chapitres appariés, %2$d paires d\'exemple, %3$d lignes mémorisées</string>
+    <string name="series_memory_examples">Exemples donnés au traducteur</string>
+    <string name="series_memory_glossary">Glossaire (un par ligne : source = traduction)</string>
+    <string name="series_memory_glossary_hint">이선웅 = Lee Seonwoong</string>
+    <string name="series_memory_forget_lines">Oublier les lignes mémorisées</string>
+    <string name="series_memory_saved">Enregistré</string>
+    <string name="series_memory_no_reference_text">Pas encore de texte de référence : télécharge des chapitres de la référence, puis lis son texte.</string>
+    <string name="series_memory_info">Le traducteur reçoit le glossaire, les paires d\'exemple appariées entre les deux éditions, et réutilise la traduction déjà donnée aux lignes courtes (noms, cris). Seul le moteur LLM s\'en sert.</string>
     <string name="translation_engine_mlkit">Google ML Kit (sur cet appareil)</string>
     <string name="translation_engine_llm">Serveur LLM (llama.cpp, API compatible OpenAI)</string>
     <string name="pref_translation_llm_url">Adresse du serveur LLM</string>

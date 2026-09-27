@@ -48,13 +48,17 @@ import mihon.feature.translation.ChapterTranslationJob
 import mihon.feature.translation.TranslationPreferences
 import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationStore
+import mihon.feature.translation.memory.SeriesMemoryBuilder
+import mihon.feature.translation.memory.SeriesMemoryStore
 import nl.adaptivity.xmlutil.serialization.XML
 import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.category.interactor.ResetCategoryFlags
+import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetFavorites
+import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.ResetViewerFlags
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.storage.service.StoragePreferences
@@ -91,6 +95,10 @@ interface AppGraph : ViewModelGraph {
     val translationPreferences: TranslationPreferences
     val translationStore: TranslationStore
     val translationQueue: TranslationQueue
+    val seriesMemoryStore: SeriesMemoryStore
+    val seriesMemoryBuilder: SeriesMemoryBuilder
+    val getManga: GetManga
+    val getChaptersByMangaId: GetChaptersByMangaId
     val networkPreferences: NetworkPreferences
     val libraryPreferences: LibraryPreferences
     val sourcePreferences: SourcePreferences

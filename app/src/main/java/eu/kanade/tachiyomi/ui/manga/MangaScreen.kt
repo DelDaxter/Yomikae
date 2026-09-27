@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
+import mihon.feature.translation.memory.SeriesMemoryScreen
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
@@ -119,6 +120,7 @@ class MangaScreen(
             onTranslateDownloadedClicked = viewModel::translateAllDownloaded.takeIf {
                 !successState.source.isLocalOrStub()
             },
+            onSeriesMemoryClicked = { navigator.push(SeriesMemoryScreen(successState.manga.id)) },
             onAddToLibraryClicked = {
                 viewModel.toggleFavorite()
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)

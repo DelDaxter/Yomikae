@@ -39,6 +39,16 @@ class TranslationStore(
 
     fun chapterDir(chapterId: Long, variant: String): File = File(root, "$chapterId/$variant")
 
+    /**
+     * Folder holding text sidecars of a chapter translated FROM [sourceLanguage] (any engine,
+     * any target): the one with the most pages wins. Null when nothing was translated yet.
+     */
+    fun sidecarDir(chapterId: Long, sourceLanguage: String): File? =
+        File(root, chapterId.toString()).listFiles { f -> f.isDirectory && f.name.startsWith("$sourceLanguage-") }
+            ?.filter { dir -> dir.name != "$sourceLanguage-extract" }
+            ?.maxByOrNull { dir -> dir.listFiles { f -> f.extension == "json" }?.size ?: 0 }
+            ?.takeIf { dir -> dir.listFiles { f -> f.extension == "json" }?.isNotEmpty() == true }
+
     fun pageFile(chapterId: Long, pageIndex: Int, variant: String): File =
         File(chapterDir(chapterId, variant), "%03d.jpg".format(pageIndex))
 

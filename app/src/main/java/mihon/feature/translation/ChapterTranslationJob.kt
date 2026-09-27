@@ -36,6 +36,9 @@ import logcat.LogPriority
 import mihon.app.di.AppGraph
 import mihon.app.di.appGraph
 import mihon.core.metro.metroGraph
+import mihon.feature.translation.memory.SeriesMemory
+import mihon.feature.translation.memory.SeriesMemoryBuilder
+import mihon.feature.translation.memory.SeriesMemoryStore
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.system.logcat
@@ -78,6 +81,10 @@ class ChapterTranslationJob(
 
     @Inject private lateinit var queue: TranslationQueue
 
+    @Inject private lateinit var memoryStore: SeriesMemoryStore
+
+    @Inject private lateinit var memoryBuilder: SeriesMemoryBuilder
+
     init {
         graph.inject(this)
     }
@@ -109,15 +116,26 @@ class ChapterTranslationJob(
 
         setForegroundSafely()
 
+        val mode = inputData.getString(KEY_MODE) ?: MODE_TRANSLATE
         val sourceLanguage = preferences.sourceLanguage.get()
         val targetLanguage = preferences.targetLanguage.get()
-        val variant = store.currentVariant()
-        val extractOnly = sourceLanguage == targetLanguage
-        val translator = PageTranslator(
-            sourceLanguage,
-            if (extractOnly) IdentityTranslator() else createTextTranslator(sourceLanguage, targetLanguage),
-            renderPages = !extractOnly,
-        )
+        // Extract mode reads a human-translated edition: its pages are in the target language.
+        val extractOnly = mode == MODE_EXTRACT || sourceLanguage == targetLanguage
+        val ocrLanguage = if (mode == MODE_EXTRACT) targetLanguage else sourceLanguage
+        val variant = if (mode == MODE_EXTRACT) extractVariant(targetLanguage) else store.currentVariant()
+
+        // Series memory: human examples, user glossary and lines already translated.
+        val memory = memoryStore.load(mangaId)
+        if (!extractOnly && memory.referenceMangaId != null) {
+            runCatching { memoryBuilder.rebuild(mangaId, sourceLanguage, targetLanguage) }
+                .onFailure { logcat(LogPriority.WARN, it) { "Series memory rebuild failed" } }
+        }
+        val freshMemory = memoryStore.load(mangaId)
+        val textTranslator = when {
+            extractOnly -> IdentityTranslator()
+            else -> createTextTranslator(sourceLanguage, targetLanguage, freshMemory)
+        }
+        val translator = PageTranslator(ocrLanguage, textTranslator, renderPages = !extractOnly)
         var failures = 0
         try {
             translator.prepare()
@@ -134,6 +152,7 @@ class ChapterTranslationJob(
                 if (isStopped) break
                 try {
                     translateChapter(translator, manga, source, chapter, variant)
+                    if (textTranslator is LlmTranslator) rememberShortLines(mangaId, textTranslator.translated)
                 } catch (e: Exception) {
                     failures++
                     queue.markError(chapter.id, e.message)
@@ -163,17 +182,32 @@ class ChapterTranslationJob(
         return if (failures == 0) Result.success() else Result.failure()
     }
 
-    /** Picks the translation engine from the settings. */
-    private fun createTextTranslator(sourceLanguage: String, targetLanguage: String): TextTranslator {
+    /** Picks the translation engine from the settings, fed with the series memory. */
+    private fun createTextTranslator(
+        sourceLanguage: String,
+        targetLanguage: String,
+        memory: SeriesMemory,
+    ): TextTranslator {
         return when (preferences.engine.get()) {
             TextTranslator.ENGINE_LLM -> LlmTranslator(
                 serverUrl = preferences.llmServerUrl.get(),
                 model = preferences.llmModel.get(),
                 targetLanguage = targetLanguage,
                 background = preferences.llmBackground.get(),
+                glossary = memory.promptPairs(),
+                knownLines = memory.lines,
             )
             else -> MlKitTranslator(sourceLanguage, targetLanguage)
         }
+    }
+
+    /** Keeps how short lines (names, shouts) were rendered, so later chapters reuse them. */
+    private fun rememberShortLines(mangaId: Long, translated: Map<String, String>) {
+        val short = translated.filter { (k, v) ->
+            k.length <= SeriesMemory.MAX_LINE_LENGTH && v.isNotBlank() && k.any { it.isLetter() }
+        }
+        if (short.isEmpty()) return
+        memoryStore.update(mangaId) { it.copy(lines = it.lines + short) }
     }
 
     private suspend fun translateChapter(
@@ -270,11 +304,23 @@ class ChapterTranslationJob(
         private const val TAG = "ChapterTranslation"
         private const val KEY_MANGA_ID = "manga_id"
         private const val KEY_CHAPTER_IDS = "chapter_ids"
+        private const val KEY_MODE = "mode"
+        const val MODE_TRANSLATE = "translate"
+        const val MODE_EXTRACT = "extract"
+
+        /** Output folder of the extract mode: the human text of a translated edition. */
+        fun extractVariant(language: String) = "$language-extract"
 
         const val ID_TRANSLATION_PROGRESS = -801
         const val ID_TRANSLATION_ERROR = -802
 
-        fun start(context: Context, mangaId: Long, mangaTitle: String, requests: List<Request>) {
+        fun start(
+            context: Context,
+            mangaId: Long,
+            mangaTitle: String,
+            requests: List<Request>,
+            mode: String = MODE_TRANSLATE,
+        ) {
             if (requests.isEmpty()) return
             context.appGraph.translationQueue.enqueue(
                 requests.map { TranslationQueue.Item(it.chapterId, mangaId, mangaTitle, it.chapterName) },
@@ -290,6 +336,7 @@ class ChapterTranslationJob(
                     workDataOf(
                         KEY_MANGA_ID to mangaId,
                         KEY_CHAPTER_IDS to chapterIds.toLongArray(),
+                        KEY_MODE to mode,
                     ),
                 )
                 .build()

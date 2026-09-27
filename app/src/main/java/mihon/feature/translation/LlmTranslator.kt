@@ -36,6 +36,8 @@ class LlmTranslator(
     private val targetLanguage: String,
     private val background: String,
     private val glossary: List<Pair<String, String>> = emptyList(),
+    /** Lines already translated for this series (names, shouts): reused verbatim. */
+    knownLines: Map<String, String> = emptyMap(),
 ) : TextTranslator {
 
     private val client = OkHttpClient.Builder()
@@ -45,7 +47,10 @@ class LlmTranslator(
         .build()
 
     private val json = Json { ignoreUnknownKeys = true }
-    private val cache = HashMap<String, String>()
+    private val cache = HashMap<String, String>(knownLines)
+
+    /** What this run translated, so the job can remember the short lines afterwards. */
+    val translated: Map<String, String> get() = cache
 
     private val endpoint: String
         get() = serverUrl.trimEnd('/') + "/v1/chat/completions"

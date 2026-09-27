@@ -1114,6 +1114,22 @@
     <string name="pref_translation_info">Translation runs on this device with Google ML Kit. Download a chapter, then choose Translate from its menu. Translation models (about 30 MB per language) are downloaded on first use.</string>
     <string name="translation_notifier_title">Translating</string>
     <string name="pref_translation_engine">Translation engine</string>
+    <string name="action_series_memory">Series memory</string>
+    <string name="series_memory_title">Series memory</string>
+    <string name="series_memory_reference">Reference edition (already translated)</string>
+    <string name="series_memory_reference_none">None. Pick the same series in your library, translated by humans.</string>
+    <string name="series_memory_pick_reference">Choose the reference edition</string>
+    <string name="series_memory_extract">Read the reference text</string>
+    <string name="series_memory_extract_summary">Reads the downloaded chapters of the reference (needed once, then again for new chapters)</string>
+    <string name="series_memory_rebuild">Match the bubbles</string>
+    <string name="series_memory_stats">%1$d chapters matched, %2$d example pairs, %3$d remembered lines</string>
+    <string name="series_memory_examples">Examples given to the translator</string>
+    <string name="series_memory_glossary">Glossary (one per line: source = translation)</string>
+    <string name="series_memory_glossary_hint">이선웅 = Lee Seonwoong</string>
+    <string name="series_memory_forget_lines">Forget remembered lines</string>
+    <string name="series_memory_saved">Saved</string>
+    <string name="series_memory_no_reference_text">No reference text yet: download chapters of the reference, then read its text.</string>
+    <string name="series_memory_info">The translator receives the glossary, the example pairs matched between the two editions, and reuses how short lines (names, shouts) were translated before. Only the LLM engine uses it.</string>
     <string name="translation_engine_mlkit">Google ML Kit (on this device)</string>
     <string name="translation_engine_llm">LLM server (llama.cpp, OpenAI-compatible API)</string>
     <string name="pref_translation_llm_url">LLM server address</string>
