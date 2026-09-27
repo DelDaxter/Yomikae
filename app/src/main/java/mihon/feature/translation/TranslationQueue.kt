@@ -85,7 +85,9 @@ class TranslationQueue(
     /** "Translate now": to the front of the pending items, and the running chapter will yield. */
     fun startNow(chapterId: Long) {
         change { current ->
-            val item = current.firstOrNull { it.chapterId == chapterId } ?: return@change current
+            val item =
+                current.firstOrNull { it.chapterId == chapterId && it.status == Status.PENDING }
+                    ?: return@change current
             val rest = current.filterNot { it.chapterId == chapterId }
             val head = rest.takeWhile { it.status == Status.RUNNING }
             head + item.copy(status = Status.PENDING, urgent = true) + rest.drop(head.size)
@@ -183,7 +185,7 @@ class TranslationQueue(
 
     fun markDone(chapterId: Long) {
         val item = _items.value.firstOrNull { it.chapterId == chapterId }
-        updateItem(chapterId) { it.copy(status = Status.DONE, page = it.pageCount) }
+        updateItem(chapterId) { it.copy(status = Status.DONE, page = it.pageCount, urgent = false) }
         if (item != null && item.pageCount > 0) {
             _stats.update {
                 it.copy(chaptersDone = it.chaptersDone + 1, chapterPages = it.chapterPages + item.pageCount)
@@ -192,7 +194,7 @@ class TranslationQueue(
     }
 
     fun markError(chapterId: Long, message: String?) {
-        updateItem(chapterId) { it.copy(status = Status.ERROR, error = message) }
+        updateItem(chapterId) { it.copy(status = Status.ERROR, error = message, urgent = false) }
     }
 
     /** After a process restart nothing can still be running. */
@@ -244,6 +246,12 @@ class TranslationQueue(
         change { list -> list.map { if (it.chapterId == chapterId) transform(it) else it } }
     }
 
+    /**
+     * Every change goes through here, under one lock: the UI thread (reorder), the worker
+     * (progress) and the download manager (delete) all touch the queue, and the file must
+     * always hold the latest state in full.
+     */
+    @Synchronized
     private fun change(transform: (List<Item>) -> List<Item>) {
         _items.update(transform)
         save(_items.value)
@@ -261,7 +269,10 @@ class TranslationQueue(
     private fun save(items: List<Item>) {
         runCatching {
             file.parentFile?.mkdirs()
-            file.writeText(json.encodeToString(items))
+            // Write then rename: a crash mid-write leaves the previous file intact.
+            val tmp = File(file.path + ".tmp")
+            tmp.writeText(json.encodeToString(items))
+            if (!tmp.renameTo(file)) error("rename failed")
         }.onFailure { logcat(LogPriority.WARN, it) { "Cannot save translation queue" } }
     }
 

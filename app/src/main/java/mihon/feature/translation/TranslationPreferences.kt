@@ -34,7 +34,7 @@ class TranslationPreferences(
     val ocrEngine: Preference<String> = preferenceStore.getString("translation_ocr_engine", OcrEngine.ENGINE_PADDLE)
 
     /** OpenAI-compatible server for the LLM engine (llama-server on a PC, Ollama, ...). */
-    val llmServerUrl: Preference<String> = preferenceStore.getString("translation_llm_url", "http://192.168.31.77:8080")
+    val llmServerUrl: Preference<String> = preferenceStore.getString("translation_llm_url", "")
 
     /** Model name sent to the server; llama-server ignores it, hosted services need it. */
     val llmModel: Preference<String> = preferenceStore.getString("translation_llm_model", "")
@@ -42,9 +42,12 @@ class TranslationPreferences(
     /** Free text given to the LLM as background: series, tone, names. */
     val llmBackground: Preference<String> = preferenceStore.getString("translation_llm_background", "")
 
+    /** Run the embedded model on the GPU (faster, falls back to CPU when the driver refuses). */
+    val localLlmGpu: Preference<Boolean> = preferenceStore.getBoolean("translation_local_llm_gpu", true)
+
     companion object {
         val SOURCE_LANGUAGES = listOf("ko", "ja", "en")
         val TARGET_LANGUAGES = listOf("en", "fr")
-        val ENGINES = listOf(TextTranslator.ENGINE_MLKIT, TextTranslator.ENGINE_LLM)
+        val ENGINES = listOf(TextTranslator.ENGINE_LOCAL, TextTranslator.ENGINE_MLKIT, TextTranslator.ENGINE_LLM)
     }
 }

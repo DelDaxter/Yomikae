@@ -3,10 +3,12 @@
 # two OCR outputs of raw chapter 1 (ML Kit = raw_363, PaddleOCR = raw1_paddle).
 import sys, os, io, random, time
 sys.stdout.reconfigure(encoding='utf-8')
-sys.path.insert(0, 'S:/Projet Mihon/Yomikae/tools/eval')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import experiment_refs as X
 from align_eval import load_strip, iou, similarity
-X.BASE = 'S:/Projet Mihon/eval/nml/sidecars'
+# Usage: python ocr_compare.py [url_serveur] [dossier_sidecars]
+if len(sys.argv) > 2:
+    X.BASE = sys.argv[2]
 BASE = X.BASE
 WM = ["뉴토끼", "구글검색", "구글검", "웹툰미리보기", "웹튼미리보기", "미리보기", "짬툰", "마나토끼", "북토끼", "툰코", "Newtoki", "Toonkor"]
 PARTS = ["가장", "빠른", "웹툰", "웹튼", "미리", "보기", "구글"]

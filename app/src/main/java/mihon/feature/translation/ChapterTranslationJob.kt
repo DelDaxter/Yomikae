@@ -6,7 +6,6 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.lifecycle.asFlow
-import androidx.work.BackoffPolicy
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.ForegroundInfo
@@ -26,6 +25,7 @@ import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -50,7 +50,6 @@ import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
 import java.io.File
-import java.util.concurrent.TimeUnit
 
 /**
  * Yomikae: background job that translates downloaded chapters, one page after the other, and
@@ -124,7 +123,13 @@ class ChapterTranslationJob(
                 val item = queue.nextPending() ?: break
                 try {
                     processItem(item, engines)
-                } catch (e: Exception) {
+                } catch (e: CancellationException) {
+                    // WorkManager stopped us: the chapter goes back to the queue, not to "failed".
+                    queue.markPending(item.chapterId)
+                    throw e
+                } catch (e: Throwable) {
+                    // Throwable and not Exception: an OutOfMemoryError on a huge page must mark
+                    // the chapter failed and let the queue move on, not leave it "running" forever.
                     failures++
                     queue.markError(item.chapterId, e.message)
                     logcat(LogPriority.ERROR, e) { "Translation failed for ${item.chapterName}" }
@@ -205,17 +210,27 @@ class ChapterTranslationJob(
         targetLanguage: String,
         memory: SeriesMemory,
     ): TextTranslator {
-        return when (preferences.engine.get()) {
-            TextTranslator.ENGINE_LLM -> LlmTranslator(
+        val backend = when (preferences.engine.get()) {
+            TextTranslator.ENGINE_LOCAL -> LocalLlmBackend(
+                context,
+                useGpu = preferences.localLlmGpu.get(),
+                onDownloadProgress = { name, done, total ->
+                    logcat { "Model $name: ${done / 1_000_000} / ${total / 1_000_000} MB" }
+                },
+            )
+            TextTranslator.ENGINE_LLM -> HttpLlmBackend(
                 serverUrl = preferences.llmServerUrl.get(),
                 model = preferences.llmModel.get(),
-                targetLanguage = targetLanguage,
-                background = preferences.llmBackground.get(),
-                memory = memory,
-                knownLines = memory.lines,
             )
-            else -> MlKitTranslator(sourceLanguage, targetLanguage)
+            else -> return MlKitTranslator(sourceLanguage, targetLanguage)
         }
+        return LlmTranslator(
+            backend = backend,
+            targetLanguage = targetLanguage,
+            background = preferences.llmBackground.get(),
+            memory = memory,
+            knownLines = memory.lines,
+        )
     }
 
     /** Keeps how short lines (names, shouts) were rendered, so later chapters reuse them. */
@@ -268,16 +283,22 @@ class ChapterTranslationJob(
                 val imageBytes = openStream().use { it.readBytes() }
                 val result = translator.translatePage(imageBytes)
                 val jpeg = result?.jpeg
-                if (jpeg != null) {
-                    val tmp = File(dir, target.name + ".tmp")
-                    tmp.writeBytes(jpeg)
-                    if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
-                }
-                if (result != null) {
-                    // Text sidecar: what was read and how it was translated, for evaluation and
-                    // for building per-series glossaries later.
-                    val sidecar = PageSidecar(page.index, result.width, result.height, result.blocks)
-                    File(dir, "%03d.json".format(page.index)).writeText(json.encodeToString(sidecar))
+                try {
+                    if (jpeg != null) {
+                        val tmp = File(dir, target.name + ".tmp")
+                        tmp.writeBytes(jpeg)
+                        if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
+                    }
+                    if (result != null) {
+                        // Text sidecar: what was read and how it was translated, for evaluation and
+                        // for building per-series glossaries later.
+                        val sidecar = PageSidecar(page.index, result.width, result.height, result.blocks)
+                        File(dir, "%03d.json".format(page.index)).writeText(json.encodeToString(sidecar))
+                    }
+                } catch (e: Exception) {
+                    // "Remove" deletes the chapter folder while a page is in flight: not an error.
+                    if (queue.isCancelled(chapter.id)) return false
+                    throw e
                 }
                 val elapsed = System.currentTimeMillis() - started
                 logcat { "Translation: page ${page.index} done in $elapsed ms (${jpeg?.size ?: 0} bytes)" }
@@ -351,17 +372,14 @@ class ChapterTranslationJob(
 
         /** Makes sure a worker is alive to drain the queue (a running one picks new items up). */
         fun ensureRunning(context: Context) {
-            val workManager = WorkManager.getInstance(context)
-            val isRunning = workManager.getWorkInfosForUniqueWork(TAG).get()
-                .any { it.state == WorkInfo.State.RUNNING }
-            if (isRunning) return
+            // APPEND_OR_REPLACE: if a worker is running, a second one is chained after it (and
+            // exits at once when the queue is empty); if the previous one failed or was
+            // cancelled, the new one replaces it. No blocking state query on the main thread,
+            // and no window where a chapter enqueued while the worker exits is left waiting.
             val request = OneTimeWorkRequestBuilder<ChapterTranslationJob>()
                 .addTag(TAG)
-                // Short, linear retry delay: the default exponential backoff made a job wait
-                // minutes after a failure, which looks like "nothing happens" to the user.
-                .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
                 .build()
-            workManager.enqueueUniqueWork(TAG, ExistingWorkPolicy.REPLACE, request)
+            WorkManager.getInstance(context).enqueueUniqueWork(TAG, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
         }
 
         /** Opens the app on the translation queue screen (used by the notifications). */

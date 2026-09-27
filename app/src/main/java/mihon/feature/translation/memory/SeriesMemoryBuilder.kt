@@ -74,7 +74,8 @@ class SeriesMemoryBuilder(
                 }.thenBy { it.source.length + it.target.length },
             )
             .take(SeriesMemory.MAX_STORED_EXAMPLES)
-        memoryStore.save(memory.copy(examples = kept, alignedChapters = aligned))
+        // Through update(): the glossary the user may have edited meanwhile is kept.
+        memoryStore.update(mangaId) { it.copy(examples = kept, alignedChapters = aligned) }
         logcat { "Series memory $mangaId: $aligned chapters aligned, ${kept.size} pairs" }
         return Report(aligned, kept.size, missingReference)
     }

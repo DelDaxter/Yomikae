@@ -84,6 +84,7 @@ class SeriesMemoryStore(
 
     private fun file(mangaId: Long) = File(dir, "$mangaId.json")
 
+    @Synchronized
     fun load(mangaId: Long): SeriesMemory {
         val f = file(mangaId)
         if (!f.exists()) return SeriesMemory(mangaId)
@@ -92,6 +93,7 @@ class SeriesMemoryStore(
             .getOrDefault(SeriesMemory(mangaId))
     }
 
+    @Synchronized
     fun save(memory: SeriesMemory) {
         dir.mkdirs()
         val tmp = File(dir, "${memory.mangaId}.json.tmp")
@@ -99,6 +101,8 @@ class SeriesMemoryStore(
         tmp.renameTo(file(memory.mangaId))
     }
 
+    /** Read-modify-write under the lock: the job and the memory screen both write here. */
+    @Synchronized
     fun update(mangaId: Long, transform: (SeriesMemory) -> SeriesMemory) {
         save(transform(load(mangaId)))
     }
