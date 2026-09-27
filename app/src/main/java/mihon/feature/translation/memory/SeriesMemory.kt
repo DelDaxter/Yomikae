@@ -60,6 +60,18 @@ data class SeriesMemory(
         const val MAX_STORED_EXAMPLES = 400
         const val MAX_LINE_LENGTH = 8
 
+        /**
+         * A line worth remembering verbatim is a name or a one-word shout: short, no spaces in the
+         * source, at most two words in the translation. Longer short lines ("so...", "um, excuse
+         * me") depend on the context and must be translated again each time.
+         */
+        fun isReusableLine(source: String, target: String): Boolean =
+            source.length <= MAX_LINE_LENGTH &&
+                source.none { it.isWhitespace() } &&
+                source.any { it.isLetter() } &&
+                target.isNotBlank() &&
+                target.trim().split(Regex("\\s+")).size <= 2
+
         /** Word-like pieces of a line, 2 characters or more, punctuation stripped. */
         fun tokens(text: String): List<String> = text
             .split(' ', '\n', '\t', ',', '.', '?', '!', '…', '~', '\'', '"', '(', ')', '[', ']')

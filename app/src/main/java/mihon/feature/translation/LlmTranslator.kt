@@ -27,7 +27,8 @@ class LlmTranslator(
     knownLines: Map<String, String> = emptyMap(),
 ) : TextTranslator {
 
-    private val cache = HashMap<String, String>(knownLines)
+    // Lines stored by earlier versions are filtered again: only names and shouts are reused.
+    private val cache = HashMap<String, String>(knownLines.filter { (k, v) -> SeriesMemory.isReusableLine(k, v) })
 
     /** What this run translated, so the job can remember the short lines afterwards. */
     val translated: Map<String, String> get() = cache
@@ -54,9 +55,25 @@ class LlmTranslator(
         return result.map { it.orEmpty() }
     }
 
-    /** Whole page in one prompt; returns null for lines the model did not answer. */
+    /** Whole page in one prompt; returns null for lines the model did not answer well. */
     private suspend fun translateBatch(lines: List<String>): List<String?> {
         val pairs = memory?.promptPairs(lines, backend.maxReferencePairs).orEmpty()
+        val answers = askForPage(lines, pairs)
+        // A small model sometimes answers a bubble with the translation of one of the examples
+        // instead of its own. Such a line is dropped and translated alone, without examples.
+        val exampleTargets = pairs.associate { (from, to) -> to.trim().lowercase() to from }
+        return answers.mapIndexed { i, text ->
+            val copiedFrom = text?.let { exampleTargets[it.trim().lowercase()] }
+            if (copiedFrom != null && copiedFrom != lines[i]) {
+                logcat(LogPriority.INFO) { "LLM copied an example for \"${lines[i]}\", retrying alone" }
+                null
+            } else {
+                text
+            }
+        }
+    }
+
+    private suspend fun askForPage(lines: List<String>, pairs: List<Pair<String, String>>): List<String?> {
         val prompt = buildString {
             if (pairs.isNotEmpty()) {
                 appendLine("Reference the following translations:")

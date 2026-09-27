@@ -235,9 +235,7 @@ class ChapterTranslationJob(
 
     /** Keeps how short lines (names, shouts) were rendered, so later chapters reuse them. */
     private fun rememberShortLines(mangaId: Long, translated: Map<String, String>) {
-        val short = translated.filter { (k, v) ->
-            k.length <= SeriesMemory.MAX_LINE_LENGTH && v.isNotBlank() && k.any { it.isLetter() }
-        }
+        val short = translated.filter { (k, v) -> SeriesMemory.isReusableLine(k, v) }
         if (short.isEmpty()) return
         memoryStore.update(mangaId) { it.copy(lines = it.lines + short) }
     }
