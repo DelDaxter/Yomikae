@@ -14,7 +14,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import androidx.work.workDataOf
 import dev.zacsweers.metro.Inject
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.download.DownloadManager
@@ -111,15 +110,45 @@ class ChapterTranslationJob(
         )
     }
 
+    /** The engines built for one manga and mode, reused across its chapters. */
+    private class Engines(val page: PageTranslator, val text: TextTranslator)
+
     override suspend fun doWork(): Result {
-        val mangaId = inputData.getLong(KEY_MANGA_ID, -1L)
-        val chapterIds = inputData.getLongArray(KEY_CHAPTER_IDS) ?: return Result.failure()
-        val manga = getManga.await(mangaId) ?: return Result.failure()
-        val source = sourceManager.get(manga.source) ?: return Result.failure()
-
         setForegroundSafely()
+        queue.recoverAfterRestart()
 
-        val mode = inputData.getString(KEY_MODE) ?: MODE_TRANSLATE
+        var failures = 0
+        val engines = HashMap<String, Engines>()
+        try {
+            while (!isStopped) {
+                val item = queue.nextPending() ?: break
+                try {
+                    processItem(item, engines)
+                } catch (e: Exception) {
+                    failures++
+                    queue.markError(item.chapterId, e.message)
+                    logcat(LogPriority.ERROR, e) { "Translation failed for ${item.chapterName}" }
+                    context.notify(ID_TRANSLATION_ERROR, Notifications.CHANNEL_DOWNLOADER_ERROR) {
+                        setContentTitle(context.stringResource(MR.strings.translation_notifier_error, item.chapterName))
+                        setContentText(e.message)
+                        setSmallIcon(R.drawable.ic_translate_24dp)
+                    }
+                }
+            }
+        } finally {
+            engines.values.forEach { runCatching { it.page.close() } }
+            context.cancelNotification(ID_TRANSLATION_PROGRESS)
+            if (isStopped) queue.recoverAfterRestart()
+        }
+        return if (failures == 0) Result.success() else Result.failure()
+    }
+
+    private suspend fun processItem(item: TranslationQueue.Item, engines: HashMap<String, Engines>) {
+        val manga = getManga.await(item.mangaId) ?: error("Manga ${item.mangaId} not found")
+        val source = sourceManager.get(manga.source) ?: error("Source ${manga.source} not installed")
+        val chapter = getChapter.await(item.chapterId) ?: error("Chapter ${item.chapterId} not found")
+
+        val mode = item.mode
         val sourceLanguage = preferences.sourceLanguage.get()
         val targetLanguage = preferences.targetLanguage.get()
         // Extract mode reads a human-translated edition: its pages are in the target language.
@@ -127,67 +156,37 @@ class ChapterTranslationJob(
         val ocrLanguage = if (mode == MODE_EXTRACT) targetLanguage else sourceLanguage
         val variant = if (mode == MODE_EXTRACT) extractVariant(targetLanguage) else store.currentVariant()
 
-        // Series memory: human examples, user glossary and lines already translated.
-        val memory = memoryStore.load(mangaId)
-        if (!extractOnly && memory.referenceMangaId != null) {
-            runCatching { memoryBuilder.rebuild(mangaId, sourceLanguage, targetLanguage) }
-                .onFailure { logcat(LogPriority.WARN, it) { "Series memory rebuild failed" } }
-        }
-        val freshMemory = memoryStore.load(mangaId)
-        val textTranslator = when {
-            extractOnly -> IdentityTranslator()
-            else -> createTextTranslator(sourceLanguage, targetLanguage, freshMemory)
-        }
-        val translator = PageTranslator(
-            createOcrEngine(ocrLanguage),
-            textTranslator,
-            sourceLanguage = ocrLanguage,
-            renderPages = !extractOnly,
-        )
-        var failures = 0
-        try {
-            translator.prepare()
-
-            val chapters = chapterIds.toList().mapNotNull { getChapter.await(it) }
-            // After a process restart the in-memory queue is empty: register what we work on.
-            queue.enqueue(
-                chapters
-                    .filter { queue.statusOf(it.id) == null }
-                    .map { TranslationQueue.Item(it.id, manga.id, manga.title, it.name) },
-            )
-
-            for (chapter in chapters) {
-                if (isStopped) break
-                try {
-                    translateChapter(translator, manga, source, chapter, variant)
-                    if (textTranslator is LlmTranslator) rememberShortLines(mangaId, textTranslator.translated)
-                } catch (e: Exception) {
-                    failures++
-                    queue.markError(chapter.id, e.message)
-                    logcat(LogPriority.ERROR, e) { "Translation failed for ${chapter.name}" }
-                    context.notify(ID_TRANSLATION_ERROR, Notifications.CHANNEL_DOWNLOADER_ERROR) {
-                        setContentTitle(context.stringResource(MR.strings.translation_notifier_error, chapter.name))
-                        setContentText(e.message)
-                        setSmallIcon(R.drawable.ic_translate_24dp)
-                    }
-                }
+        val engineSet = engines.getOrPut("${manga.id}:$mode:$variant") {
+            // Series memory: human examples, user glossary and lines already translated.
+            val memory = memoryStore.load(manga.id)
+            if (!extractOnly && memory.referenceMangaId != null) {
+                runCatching { memoryBuilder.rebuild(manga.id, sourceLanguage, targetLanguage) }
+                    .onFailure { logcat(LogPriority.WARN, it) { "Series memory rebuild failed" } }
             }
-        } catch (e: Exception) {
-            chapterIds.forEach { queue.markError(it, e.message) }
-            logcat(LogPriority.ERROR, e) { "Translation job failed" }
-            context.notify(ID_TRANSLATION_ERROR, Notifications.CHANNEL_DOWNLOADER_ERROR) {
-                setContentTitle(context.stringResource(MR.strings.translation_notifier_error, manga.title))
-                setContentText(e.message)
-                setSmallIcon(R.drawable.ic_translate_24dp)
+            val freshMemory = memoryStore.load(manga.id)
+            val text = if (extractOnly) {
+                IdentityTranslator()
+            } else {
+                createTextTranslator(
+                    sourceLanguage,
+                    targetLanguage,
+                    freshMemory,
+                )
             }
-            return Result.failure()
-        } finally {
-            translator.close()
-            context.cancelNotification(ID_TRANSLATION_PROGRESS)
-            if (isStopped) queue.cancelAll()
+            val page =
+                PageTranslator(
+                    createOcrEngine(ocrLanguage),
+                    text,
+                    sourceLanguage = ocrLanguage,
+                    renderPages = !extractOnly,
+                )
+            page.prepare()
+            Engines(page, text)
         }
 
-        return if (failures == 0) Result.success() else Result.failure()
+        val finished = translateChapter(engineSet.page, manga, source, chapter, variant)
+        val text = engineSet.text
+        if (finished && text is LlmTranslator) rememberShortLines(manga.id, text.translated)
     }
 
     /** Picks the OCR engine from the settings; PaddleOCR only for the languages it covers. */
@@ -228,13 +227,14 @@ class ChapterTranslationJob(
         memoryStore.update(mangaId) { it.copy(lines = it.lines + short) }
     }
 
+    /** Returns true when the chapter is complete, false when it yielded (stop, cancel, "translate now"). */
     private suspend fun translateChapter(
         translator: PageTranslator,
         manga: tachiyomi.domain.manga.model.Manga,
         source: eu.kanade.tachiyomi.source.Source,
         chapter: Chapter,
         variant: String,
-    ) {
+    ): Boolean {
         // Reuse the reader's own loader so page order is exactly what the reader will show.
         // The loader must stay open until the last page is read: for CBZ chapters the page
         // streams come from a native archive reader that recycle() closes.
@@ -250,7 +250,10 @@ class ChapterTranslationJob(
             val dir = store.chapterDir(chapter.id, variant).apply { mkdirs() }
 
             pages.forEachIndexed { index, page ->
-                if (isStopped) return
+                if (isStopped || queue.shouldYield(chapter.id)) {
+                    if (!queue.isCancelled(chapter.id)) queue.markPending(chapter.id)
+                    return false
+                }
                 showProgress(chapter.name, index + 1, pages.size)
 
                 val target = store.pageFile(chapter.id, page.index, variant)
@@ -281,10 +284,13 @@ class ChapterTranslationJob(
                 queue.markPage(chapter.id, index + 1, elapsed)
             }
 
-            if (!isStopped) {
-                store.markDone(chapter.id, variant)
-                queue.markDone(chapter.id)
+            if (isStopped) {
+                queue.markPending(chapter.id)
+                return false
             }
+            store.markDone(chapter.id, variant)
+            queue.markDone(chapter.id)
+            return true
         } finally {
             loader.recycle()
         }
@@ -320,9 +326,6 @@ class ChapterTranslationJob(
 
     companion object {
         private const val TAG = "ChapterTranslation"
-        private const val KEY_MANGA_ID = "manga_id"
-        private const val KEY_CHAPTER_IDS = "chapter_ids"
-        private const val KEY_MODE = "mode"
         const val MODE_TRANSLATE = "translate"
         const val MODE_EXTRACT = "extract"
 
@@ -341,30 +344,24 @@ class ChapterTranslationJob(
         ) {
             if (requests.isEmpty()) return
             context.appGraph.translationQueue.enqueue(
-                requests.map { TranslationQueue.Item(it.chapterId, mangaId, mangaTitle, it.chapterName) },
+                requests.map { TranslationQueue.Item(it.chapterId, mangaId, mangaTitle, it.chapterName, mode) },
             )
-            val chapterIds = requests.map { it.chapterId }
+            ensureRunning(context)
+        }
 
+        /** Makes sure a worker is alive to drain the queue (a running one picks new items up). */
+        fun ensureRunning(context: Context) {
+            val workManager = WorkManager.getInstance(context)
+            val isRunning = workManager.getWorkInfosForUniqueWork(TAG).get()
+                .any { it.state == WorkInfo.State.RUNNING }
+            if (isRunning) return
             val request = OneTimeWorkRequestBuilder<ChapterTranslationJob>()
                 .addTag(TAG)
                 // Short, linear retry delay: the default exponential backoff made a job wait
                 // minutes after a failure, which looks like "nothing happens" to the user.
                 .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)
-                .setInputData(
-                    workDataOf(
-                        KEY_MANGA_ID to mangaId,
-                        KEY_CHAPTER_IDS to chapterIds.toLongArray(),
-                        KEY_MODE to mode,
-                    ),
-                )
                 .build()
-            val workManager = WorkManager.getInstance(context)
-            // Append behind a running job; otherwise replace whatever is left (a job stuck in a
-            // retry delay after a crash would keep the new request waiting for minutes).
-            val isRunning = workManager.getWorkInfosForUniqueWork(TAG).get()
-                .any { it.state == WorkInfo.State.RUNNING }
-            val policy = if (isRunning) ExistingWorkPolicy.APPEND_OR_REPLACE else ExistingWorkPolicy.REPLACE
-            workManager.enqueueUniqueWork(TAG, policy, request)
+            workManager.enqueueUniqueWork(TAG, ExistingWorkPolicy.REPLACE, request)
         }
 
         /** Opens the app on the translation queue screen (used by the notifications). */

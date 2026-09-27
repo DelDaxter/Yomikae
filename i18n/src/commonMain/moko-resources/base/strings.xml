@@ -1154,6 +1154,12 @@
     <string name="translation_queue_per_page">%1$d ms per page on average</string>
     <string name="translation_queue_summary">%1$d waiting</string>
     <string name="action_clear_finished">Clear finished</string>
+    <string name="action_translate_now">Translate now</string>
+    <string name="action_remove_from_queue">Remove from queue</string>
+    <string name="action_move_up">Move up</string>
+    <string name="action_move_down">Move down</string>
+    <string name="action_move_to_top">Move to top</string>
+    <string name="action_move_to_bottom">Move to bottom</string>
     <string name="translation_chapter_translated">Translated</string>
     <string name="translation_chapter_queued">Queued for translation</string>
     <string name="translation_notifier_progress">%1$s (page %2$d/%3$d)</string>

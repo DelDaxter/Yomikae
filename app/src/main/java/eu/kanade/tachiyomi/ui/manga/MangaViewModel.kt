@@ -872,6 +872,13 @@ class MangaViewModel(
                 items.forEach { translationStore.deleteChapter(it.id) }
                 translateChapters(items.map { it.chapter })
             }
+            ChapterTranslationAction.START_NOW -> {
+                items.forEach { translationQueue.startNow(it.id) }
+                ChapterTranslationJob.ensureRunning(context)
+            }
+            ChapterTranslationAction.REMOVE_FROM_QUEUE -> {
+                items.forEach { translationQueue.remove(it.id) }
+            }
             ChapterTranslationAction.DELETE -> {
                 val ids = items.map { it.id }.toSet()
                 ids.forEach { translationStore.deleteChapter(it) }

@@ -30,6 +30,8 @@ enum class ChapterTranslationAction {
     TRANSLATE,
     RETRANSLATE,
     DELETE,
+    START_NOW,
+    REMOVE_FROM_QUEUE,
 }
 
 /**
@@ -53,11 +55,8 @@ fun ChapterTranslationIndicator(
         TranslationState.NONE, TranslationState.ERROR -> {
             { onClick(ChapterTranslationAction.TRANSLATE) }
         }
-        TranslationState.DONE -> {
+        TranslationState.DONE, TranslationState.QUEUED, TranslationState.RUNNING -> {
             { isMenuExpanded = true }
-        }
-        TranslationState.QUEUED, TranslationState.RUNNING -> {
-            {}
         }
     }
 
@@ -81,6 +80,22 @@ fun ChapterTranslationIndicator(
                     modifier = Modifier.size(IconSize),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                DropdownMenu(expanded = isMenuExpanded, onDismissRequest = { isMenuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(text = stringResource(MR.strings.action_translate_now)) },
+                        onClick = {
+                            onClick(ChapterTranslationAction.START_NOW)
+                            isMenuExpanded = false
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(text = stringResource(MR.strings.action_remove_from_queue)) },
+                        onClick = {
+                            onClick(ChapterTranslationAction.REMOVE_FROM_QUEUE)
+                            isMenuExpanded = false
+                        },
+                    )
+                }
             }
             TranslationState.RUNNING -> {
                 CircularProgressIndicator(
@@ -95,6 +110,15 @@ fun ChapterTranslationIndicator(
                     modifier = Modifier.size(IconSize),
                     tint = MaterialTheme.colorScheme.primary,
                 )
+                DropdownMenu(expanded = isMenuExpanded, onDismissRequest = { isMenuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(text = stringResource(MR.strings.action_cancel)) },
+                        onClick = {
+                            onClick(ChapterTranslationAction.REMOVE_FROM_QUEUE)
+                            isMenuExpanded = false
+                        },
+                    )
+                }
             }
             TranslationState.DONE -> {
                 Icon(

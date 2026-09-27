@@ -1,5 +1,6 @@
 package mihon.feature.translation.ui
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,6 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -19,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -149,7 +153,18 @@ object TranslationQueueScreen : Screen() {
                     }
                 }
                 items(items, key = { it.chapterId }) { item ->
-                    QueueRow(item)
+                    QueueRow(
+                        item = item,
+                        onStartNow = {
+                            queue.startNow(item.chapterId)
+                            ChapterTranslationJob.ensureRunning(context)
+                        },
+                        onMoveUp = { queue.moveUp(item.chapterId) },
+                        onMoveDown = { queue.moveDown(item.chapterId) },
+                        onMoveToTop = { queue.moveToTop(item.chapterId) },
+                        onMoveToBottom = { queue.moveToBottom(item.chapterId) },
+                        onRemove = { queue.remove(item.chapterId) },
+                    )
                 }
             }
         }
@@ -157,7 +172,17 @@ object TranslationQueueScreen : Screen() {
 }
 
 @Composable
-private fun QueueRow(item: TranslationQueue.Item) {
+private fun QueueRow(
+    item: TranslationQueue.Item,
+    onStartNow: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onMoveToTop: () -> Unit,
+    onMoveToBottom: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    val actionable = item.status == TranslationQueue.Status.PENDING || item.status == TranslationQueue.Status.RUNNING
     val (icon, tint) = when (item.status) {
         TranslationQueue.Status.PENDING ->
             MaterialSymbols.Rounded.Schedule to
@@ -186,10 +211,51 @@ private fun QueueRow(item: TranslationQueue.Item) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(enabled = actionable) { menuExpanded = true }
             .padding(horizontal = MaterialTheme.padding.medium, vertical = MaterialTheme.padding.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StatusIcon(icon = icon, tint = tint)
+        DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+            if (item.status == TranslationQueue.Status.PENDING) {
+                DropdownMenuItem(text = { Text(stringResource(MR.strings.action_translate_now)) }, onClick = {
+                    onStartNow()
+                    menuExpanded =
+                        false
+                })
+                DropdownMenuItem(text = { Text(stringResource(MR.strings.action_move_to_top)) }, onClick = {
+                    onMoveToTop()
+                    menuExpanded =
+                        false
+                })
+                DropdownMenuItem(text = { Text(stringResource(MR.strings.action_move_up)) }, onClick = {
+                    onMoveUp()
+                    menuExpanded =
+                        false
+                })
+                DropdownMenuItem(text = { Text(stringResource(MR.strings.action_move_down)) }, onClick = {
+                    onMoveDown()
+                    menuExpanded =
+                        false
+                })
+                DropdownMenuItem(text = { Text(stringResource(MR.strings.action_move_to_bottom)) }, onClick = {
+                    onMoveToBottom()
+                    menuExpanded =
+                        false
+                })
+                DropdownMenuItem(text = { Text(stringResource(MR.strings.action_remove_from_queue)) }, onClick = {
+                    onRemove()
+                    menuExpanded =
+                        false
+                })
+            } else {
+                DropdownMenuItem(text = { Text(stringResource(MR.strings.action_cancel)) }, onClick = {
+                    onRemove()
+                    menuExpanded =
+                        false
+                })
+            }
+        }
         Spacer(modifier = Modifier.width(MaterialTheme.padding.medium))
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
