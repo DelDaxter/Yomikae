@@ -138,7 +138,12 @@ class ChapterTranslationJob(
             extractOnly -> IdentityTranslator()
             else -> createTextTranslator(sourceLanguage, targetLanguage, freshMemory)
         }
-        val translator = PageTranslator(createOcrEngine(ocrLanguage), textTranslator, renderPages = !extractOnly)
+        val translator = PageTranslator(
+            createOcrEngine(ocrLanguage),
+            textTranslator,
+            sourceLanguage = ocrLanguage,
+            renderPages = !extractOnly,
+        )
         var failures = 0
         try {
             translator.prepare()

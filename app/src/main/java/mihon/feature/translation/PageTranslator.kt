@@ -26,6 +26,8 @@ import java.io.Closeable
 class PageTranslator(
     private val ocr: OcrEngine,
     private val translator: TextTranslator,
+    /** Language the pages are supposed to be in; blocks without a single character of it are dropped. */
+    private val sourceLanguage: String,
     /** False = read the text only (sidecars), do not paint any page. */
     private val renderPages: Boolean = true,
 ) : Closeable {
@@ -162,7 +164,16 @@ class PageTranslator(
         if (t.length < 2) return true
         if (URL_PATTERN.containsMatchIn(t)) return true
         if (WATERMARK_WORDS.any { t.contains(it) }) return true
-        return !t.any { it.isLetter() }
+        if (!t.any { it.isLetter() }) return true
+        // A Korean page never yields a block without Hangul; such a block is a misread of
+        // artwork, a logo, or a page that is not in the source language at all.
+        return !hasSourceScript(t)
+    }
+
+    private fun hasSourceScript(text: String): Boolean = when (sourceLanguage) {
+        "ko" -> text.any { it in '가'..'힣' || it in 'ᄀ'..'ᇿ' || it in '㄰'..'㆏' }
+        "ja" -> text.any { it in '぀'..'ヿ' || it in '一'..'鿿' }
+        else -> true
     }
 
     /**
