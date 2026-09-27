@@ -43,6 +43,8 @@ object MergedChapters {
         sourceLanguage: String,
         isTranslated: (chapterId: Long) -> Boolean,
         translatedLabel: String,
+        /** A chapter that must stay in the list whatever its rank (the one being read). */
+        preferredChapterId: Long? = null,
     ): List<Row> {
         class Candidate(val chapter: Chapter, val member: Member, val rank: Int)
 
@@ -51,6 +53,7 @@ object MergedChapters {
             val member = members[mangaId] ?: continue
             for (chapter in chapters) {
                 val rank = when {
+                    chapter.id == preferredChapterId -> -1
                     member.language == targetLanguage -> 0
                     member.language == sourceLanguage && isTranslated(chapter.id) -> 1
                     member.language == sourceLanguage -> 2

@@ -69,10 +69,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
+import mihon.feature.merge.MangaGroupStore
+import mihon.feature.merge.MergedChapters
 import mihon.feature.translation.ChapterTranslationJob
 import mihon.feature.translation.TranslationPreferences
 import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationStore
+import mihon.feature.translation.memory.SeriesMemoryStore
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
@@ -81,6 +84,7 @@ import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.interactor.UpdateChapter
+import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.chapter.model.ChapterUpdate
 import tachiyomi.domain.chapter.service.getChapterSort
 import tachiyomi.domain.download.service.DownloadPreferences
@@ -128,6 +132,8 @@ class ReaderViewModel(
     private val translationPreferences: TranslationPreferences,
     private val translationStore: TranslationStore,
     private val translationQueue: TranslationQueue,
+    private val groupStore: MangaGroupStore,
+    private val seriesMemoryStore: SeriesMemoryStore,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -202,6 +208,59 @@ class ReaderViewModel(
         runBlocking { getChaptersByMangaId.await(manga.id, applyScanlatorFilter = false) }
     }
 
+    /** Yomikae: chapters of the other entries of the unified group, merged with [own]. */
+    private suspend fun mergeWithGroup(manga: Manga, own: List<Chapter>, selectedChapterId: Long): List<Chapter> {
+        val group = groupStore.groupOfPrimary(manga.id) ?: groupStore.groupOfMember(manga.id) ?: return own
+        val others = (listOf(group.primaryMangaId) + group.memberIds)
+            .filter { it != manga.id }
+            .mapNotNull { id ->
+                getManga.await(id)?.let {
+                    it to
+                        getChaptersByMangaId.await(id, applyScanlatorFilter = true)
+                }
+            }
+        if (others.isEmpty()) return own
+        val infos = (others.map { it.first } + manga).associate { m ->
+            val source = sourceManager.getOrStub(m.source)
+            m.id to MergedChapters.Member(
+                mangaId = m.id,
+                language = source.lang.takeIf { it.isNotBlank() },
+                sourceName = source.name,
+                numberOffset = seriesMemoryStore.load(m.id).referenceOffset,
+            )
+        }
+        return MergedChapters.merge(
+            chaptersByManga = others.associate { it.first.id to it.second } + (manga.id to own),
+            members = infos,
+            targetLanguage = translationPreferences.targetLanguage.get(),
+            sourceLanguage = translationPreferences.sourceLanguage.get(),
+            isTranslated = translationStore::isChapterTranslated,
+            translatedLabel = "",
+            preferredChapterId = selectedChapterId,
+        ).map { it.chapter }
+    }
+
+    /** Loaders of the other entries of the group, created on first use. */
+    private val memberLoaders = HashMap<Long, ChapterLoader>()
+
+    /** Yomikae: a chapter of another entry of the unified group loads with that entry's loader. */
+    private suspend fun loaderFor(chapter: ReaderChapter): ChapterLoader? {
+        val mangaId = chapter.chapter.manga_id ?: return loader
+        if (mangaId == manga?.id) return loader
+        memberLoaders[mangaId]?.let { return it }
+        val member = getManga.await(mangaId) ?: return loader
+        val source = sourceManager.getOrStub(member.source)
+        return ChapterLoader(context, downloadManager, downloadProvider, chapterCache, member, source)
+            .also { memberLoaders[mangaId] = it }
+    }
+
+    /** The entry a chapter belongs to: the active one, or a member of its unified group. */
+    private suspend fun mangaOfChapter(chapter: eu.kanade.tachiyomi.data.database.models.Chapter): Manga? {
+        val active = manga ?: return null
+        val id = chapter.manga_id ?: return active
+        return if (id == active.id) active else getManga.await(id)
+    }
+
     /**
      * Chapter list for the active manga. It's retrieved lazily and should be accessed for the first
      * time in a background thread to avoid blocking the UI.
@@ -257,7 +316,9 @@ class ReaderViewModel(
             else -> chapters
         }
 
-        chaptersForReader
+        // Yomikae: inside a unified entry the reader walks the merged list of the whole group,
+        // so "next chapter" can move from the official translation to a translated raw.
+        runBlocking { mergeWithGroup(manga, chaptersForReader, selectedChapter.id) }
             .sortedWith(getChapterSort(manga, sortDescending = false))
             .run {
                 if (readerPreferences.skipDupe.get()) {
@@ -383,7 +444,7 @@ class ReaderViewModel(
      * It's used only to set this chapter as active.
      */
     private fun loadNewChapter(chapter: ReaderChapter) {
-        val loader = loader ?: return
+        if (loader == null) return
 
         viewModelScope.launchIO {
             logcat { "Loading ${chapter.chapter.url}" }
@@ -392,7 +453,8 @@ class ReaderViewModel(
             restartReadTimer()
 
             try {
-                loadChapter(loader, chapter)
+                val chapterLoader = loaderFor(chapter) ?: return@launchIO
+                loadChapter(chapterLoader, chapter)
             } catch (e: Throwable) {
                 if (e is CancellationException) {
                     throw e
@@ -406,7 +468,7 @@ class ReaderViewModel(
      * Called when the user is going to load the prev/next chapter through the toolbar buttons.
      */
     private suspend fun loadAdjacent(chapter: ReaderChapter) {
-        val loader = loader ?: return
+        val loader = loaderFor(chapter) ?: return
 
         logcat { "Loading adjacent ${chapter.chapter.url}" }
 
@@ -435,14 +497,20 @@ class ReaderViewModel(
         }
 
         if (chapter.pageLoader?.isLocal == false) {
-            val manga = manga ?: return
             val dbChapter = chapter.chapter
-            val source = state.value.source ?: return
+            val chapterManga = mangaOfChapter(dbChapter) ?: return
+            val source = if (chapterManga.id ==
+                manga?.id
+            ) {
+                state.value.source ?: return
+            } else {
+                sourceManager.getOrStub(chapterManga.source)
+            }
             val isDownloaded = downloadManager.isChapterDownloadedOnDisk(
                 dbChapter.name,
                 dbChapter.scanlator,
                 dbChapter.url,
-                manga.title,
+                chapterManga.title,
                 source,
             )
             if (isDownloaded) {
@@ -454,7 +522,7 @@ class ReaderViewModel(
             return
         }
 
-        val loader = loader ?: return
+        val loader = loaderFor(chapter) ?: return
         try {
             logcat { "Preloading ${chapter.chapter.url}" }
             loader.loadChapter(chapter)
@@ -522,22 +590,30 @@ class ReaderViewModel(
         translateAheadDone = current.id
         val candidates = listOfNotNull(current, state.value.viewerChapters?.nextChapter?.chapter)
         viewModelScope.launchIO {
-            val requests = candidates.filter { chapter ->
-                val id = chapter.id ?: return@filter false
-                translationQueue.statusOf(id) == null &&
+            // In a unified entry the next chapter may belong to another entry of the group.
+            val wanted = candidates.mapNotNull { chapter ->
+                val id = chapter.id ?: return@mapNotNull null
+                val owner = mangaOfChapter(chapter) ?: return@mapNotNull null
+                val ready = translationQueue.statusOf(id) == null &&
                     !translationStore.isChapterTranslated(id) &&
                     downloadManager.isChapterDownloaded(
                         chapter.name,
                         chapter.scanlator,
                         chapter.url,
-                        manga.title,
-                        manga.source,
+                        owner.title,
+                        owner.source,
                     )
-            }.map { ChapterTranslationJob.Request(it.id!!, it.name) }
-            if (requests.isEmpty()) return@launchIO
-            ChapterTranslationJob.start(context, manga.id, manga.title, requests)
+                if (ready) owner to ChapterTranslationJob.Request(id, chapter.name) else null
+            }
+            if (wanted.isEmpty()) return@launchIO
+            wanted.groupBy { it.first.id }.forEach { (_, list) ->
+                val owner = list.first().first
+                ChapterTranslationJob.start(context, owner.id, owner.title, list.map { it.second })
+            }
             // The chapter on screen goes first.
-            requests.firstOrNull { it.chapterId == current.id }?.let { translationQueue.startNow(it.chapterId) }
+            wanted.firstOrNull {
+                it.second.chapterId == current.id
+            }?.let { translationQueue.startNow(it.second.chapterId) }
         }
     }
 
@@ -548,6 +624,8 @@ class ReaderViewModel(
         // Only download ahead if current + next chapter is already downloaded too to avoid jank
         if (getCurrentChapter()?.pageLoader !is DownloadPageLoader) return
         val nextChapter = state.value.viewerChapters?.nextChapter?.chapter ?: return
+        // Yomikae: a next chapter from another entry of the unified group is not ours to download ahead.
+        if (nextChapter.manga_id != manga.id) return
 
         viewModelScope.launchIO {
             val isNextChapterDownloaded = downloadManager.isChapterDownloaded(
