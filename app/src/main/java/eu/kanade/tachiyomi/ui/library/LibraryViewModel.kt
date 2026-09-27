@@ -413,7 +413,6 @@ class LibraryViewModel(
     private suspend fun unifiedDisplayTitles(groups: List<MangaGroupStore.Group>, all: List<Manga>): Map<Long, String> {
         if (groups.isEmpty()) return emptyMap()
         val byId = all.associateBy { it.id }
-        val target = translationPreferences.targetLanguage.get()
         val raw = translationPreferences.sourceLanguage.get()
         suspend fun languageOf(manga: Manga): String? {
             val source = sourceManager.getOrStub(manga.source)
@@ -423,6 +422,7 @@ class LibraryViewModel(
         val result = HashMap<Long, String>()
         for (group in groups) {
             val primary = byId[group.primaryMangaId] ?: continue
+            val target = translationPreferences.readingLanguage(group.primaryMangaId)
             if (languageOf(primary) == target) continue
             val other = group.memberIds.mapNotNull { byId[it] }.firstOrNull { languageOf(it) == target } ?: continue
             if (other.title.isNotBlank() && !other.title.equals(primary.title, ignoreCase = true)) {
@@ -438,7 +438,8 @@ class LibraryViewModel(
             getLibraryItemPreferencesFlow(),
             downloadCache.changes,
             groupStore.groups,
-        ) { libraryManga, preferences, _, groups ->
+            translationPreferences.readingLanguageOverrides.changes(),
+        ) { libraryManga, preferences, _, groups, _ ->
             // Yomikae: entries merged into a unified entry stay out of the library grid.
             // A group whose primary is not (or no longer) in the library hides nothing.
             val favoriteIds = libraryManga.map { it.manga.id }.toSet()

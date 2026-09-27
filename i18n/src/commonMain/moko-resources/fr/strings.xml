@@ -918,6 +918,8 @@
     <string name="merge_dialog_title">Fiche unifiée</string>
     <string name="merge_dialog_hint">Coche les fiches de la bibliothèque qui sont la même œuvre (autres sources, autres langues). Elles quittent la grille de la bibliothèque et leurs chapitres apparaissent ici, dans la langue de lecture quand elle existe.</string>
     <string name="merge_translated_label">traduit</string>
+    <string name="reading_language_title">Langue de lecture de cette série</string>
+    <string name="reading_language_hint">Titre, synopsis et chapitres viennent de l\'édition dans cette langue quand la fiche unifiée en a une ; sinon le raw traduit sur le téléphone passe en premier.</string>
     <string name="merge_show_original_synopsis">Afficher le synopsis original</string>
     <string name="merge_show_translated_synopsis">Afficher le synopsis traduit</string>
     <string name="pref_translation_global_glossary">Glossaire global</string>

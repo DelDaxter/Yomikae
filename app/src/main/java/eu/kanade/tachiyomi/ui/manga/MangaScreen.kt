@@ -54,6 +54,7 @@ import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.feature.merge.MergeDialog
+import mihon.feature.merge.ReadingLanguageDialog
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.feature.translation.memory.SeriesMemoryScreen
@@ -166,6 +167,7 @@ class MangaScreen(
             onEditFetchIntervalClicked = viewModel::showSetFetchIntervalDialog.takeIf {
                 successState.manga.favorite
             },
+            onReadingLanguageClicked = viewModel::showReadingLanguageDialog,
             onMigrateClicked = {
                 navigator.push(MigrationConfigScreen(successState.manga.id))
             }.takeIf { successState.manga.favorite },
@@ -303,6 +305,17 @@ class MangaScreen(
                     onDismissRequest = onDismissRequest,
                     onSelected = { mode ->
                         viewModel.setAutoTranslateMode(dialog.manga.id, mode)
+                        onDismissRequest()
+                    },
+                )
+            }
+            is MangaViewModel.Dialog.ReadingLanguage -> {
+                ReadingLanguageDialog(
+                    current = dialog.current,
+                    options = dialog.options,
+                    onDismissRequest = onDismissRequest,
+                    onSelected = { language ->
+                        viewModel.setReadingLanguage(dialog.manga.id, language)
                         onDismissRequest()
                     },
                 )

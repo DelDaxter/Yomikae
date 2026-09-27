@@ -111,6 +111,7 @@ fun MangaScreen(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onEditCategoryClicked: (() -> Unit)?,
     onEditFetchIntervalClicked: (() -> Unit)?,
+    onReadingLanguageClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onTranslateDownloadedClicked: (() -> Unit)?,
     onSeriesMemoryClicked: (() -> Unit)?,
@@ -166,6 +167,7 @@ fun MangaScreen(
             onDownloadActionClicked = onDownloadActionClicked,
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
+            onReadingLanguageClicked = onReadingLanguageClicked,
             onMigrateClicked = onMigrateClicked,
             onTranslateDownloadedClicked = onTranslateDownloadedClicked,
             onSeriesMemoryClicked = onSeriesMemoryClicked,
@@ -208,6 +210,7 @@ fun MangaScreen(
             onDownloadActionClicked = onDownloadActionClicked,
             onEditCategoryClicked = onEditCategoryClicked,
             onEditIntervalClicked = onEditFetchIntervalClicked,
+            onReadingLanguageClicked = onReadingLanguageClicked,
             onMigrateClicked = onMigrateClicked,
             onTranslateDownloadedClicked = onTranslateDownloadedClicked,
             onSeriesMemoryClicked = onSeriesMemoryClicked,
@@ -260,6 +263,7 @@ private fun MangaScreenSmallImpl(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
+    onReadingLanguageClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onTranslateDownloadedClicked: (() -> Unit)?,
     onSeriesMemoryClicked: (() -> Unit)?,
@@ -433,6 +437,9 @@ private fun MangaScreenSmallImpl(
                             onTrackingClicked = onTrackingClicked,
                             onEditIntervalClicked = onEditIntervalClicked,
                             onEditCategory = onEditCategoryClicked,
+                            readingLanguage = state.readingLanguage,
+                            readingLanguageCustom = state.readingLanguageCustom,
+                            onReadingLanguageClicked = onReadingLanguageClicked,
                         )
                     }
 
@@ -518,6 +525,7 @@ fun MangaScreenLargeImpl(
     onDownloadActionClicked: ((DownloadAction) -> Unit)?,
     onEditCategoryClicked: (() -> Unit)?,
     onEditIntervalClicked: (() -> Unit)?,
+    onReadingLanguageClicked: (() -> Unit)?,
     onMigrateClicked: (() -> Unit)?,
     onTranslateDownloadedClicked: (() -> Unit)?,
     onSeriesMemoryClicked: (() -> Unit)?,
@@ -679,6 +687,9 @@ fun MangaScreenLargeImpl(
                             onTrackingClicked = onTrackingClicked,
                             onEditIntervalClicked = onEditIntervalClicked,
                             onEditCategory = onEditCategoryClicked,
+                            readingLanguage = state.readingLanguage,
+                            readingLanguageCustom = state.readingLanguageCustom,
+                            onReadingLanguageClicked = onReadingLanguageClicked,
                         )
                         ExpandableMangaDescription(
                             defaultExpandState = true,

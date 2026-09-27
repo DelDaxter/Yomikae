@@ -94,6 +94,7 @@ import mihon.icons.materialsymbols.rounded.Person
 import mihon.icons.materialsymbols.rounded.Public
 import mihon.icons.materialsymbols.rounded.Schedule
 import mihon.icons.materialsymbols.rounded.Sync
+import mihon.icons.materialsymbols.rounded.Translate
 import mihon.icons.materialsymbols.rounded.Warning
 import mihon.icons.materialsymbols.roundedfilled.Favorite
 import org.intellij.markdown.MarkdownElementTypes
@@ -108,6 +109,7 @@ import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.clickableNoIndication
 import tachiyomi.presentation.core.util.secondaryItemAlpha
+import java.util.Locale
 import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlin.time.Instant
@@ -194,6 +196,9 @@ fun MangaActionRow(
     onEditIntervalClicked: (() -> Unit)?,
     onEditCategory: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    readingLanguage: String? = null,
+    readingLanguageCustom: Boolean = false,
+    onReadingLanguageClicked: (() -> Unit)? = null,
 ) {
     val defaultActionButtonColor = MaterialTheme.colorScheme.onSurface.copy(alpha = DISABLED_ALPHA)
 
@@ -233,6 +238,15 @@ fun MangaActionRow(
             color = if (isUserIntervalMode) MaterialTheme.colorScheme.primary else defaultActionButtonColor,
             onClick = { onEditIntervalClicked?.invoke() },
         )
+        // Yomikae: reading language of this series ("EN"), coloured when it differs from the global one.
+        if (readingLanguage != null) {
+            MangaActionButton(
+                title = readingLanguage.uppercase(Locale.ROOT),
+                icon = MaterialSymbols.Rounded.Translate,
+                color = if (readingLanguageCustom) MaterialTheme.colorScheme.primary else defaultActionButtonColor,
+                onClick = { onReadingLanguageClicked?.invoke() },
+            )
+        }
         MangaActionButton(
             title = if (trackingCount == 0) {
                 stringResource(MR.strings.manga_tracking_tab)
