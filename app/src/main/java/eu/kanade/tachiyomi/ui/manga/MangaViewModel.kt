@@ -54,6 +54,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -224,6 +226,10 @@ class MangaViewModel(
                 memberChapters,
             ) { mangaAndChapters, _, _, _, members -> mangaAndChapters to members }
                 .collectLatest { (mangaAndChapters, members) ->
+                    // On a cold start this can emit before the initial Success state exists,
+                    // and the merged list of a unified entry would be lost until the next
+                    // change: wait for the screen to be ready before applying.
+                    state.filterIsInstance<State.Success>().first()
                     val (manga, chapters) = mangaAndChapters
                     val items = mergedChapterItems(manga, chapters, members)
                     val displayTitle = groupDisplayTitle
