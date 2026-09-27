@@ -115,6 +115,7 @@ fun MangaScreen(
     onTranslateDownloadedClicked: (() -> Unit)?,
     onSeriesMemoryClicked: (() -> Unit)?,
     onAutoTranslateClicked: (() -> Unit)?,
+    onMergeClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -168,6 +169,7 @@ fun MangaScreen(
             onTranslateDownloadedClicked = onTranslateDownloadedClicked,
             onSeriesMemoryClicked = onSeriesMemoryClicked,
             onAutoTranslateClicked = onAutoTranslateClicked,
+            onMergeClicked = onMergeClicked,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -208,6 +210,7 @@ fun MangaScreen(
             onTranslateDownloadedClicked = onTranslateDownloadedClicked,
             onSeriesMemoryClicked = onSeriesMemoryClicked,
             onAutoTranslateClicked = onAutoTranslateClicked,
+            onMergeClicked = onMergeClicked,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -258,6 +261,7 @@ private fun MangaScreenSmallImpl(
     onTranslateDownloadedClicked: (() -> Unit)?,
     onSeriesMemoryClicked: (() -> Unit)?,
     onAutoTranslateClicked: (() -> Unit)?,
+    onMergeClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -320,6 +324,7 @@ private fun MangaScreenSmallImpl(
                 onClickTranslateDownloaded = onTranslateDownloadedClicked,
                 onClickSeriesMemory = onSeriesMemoryClicked,
                 onClickAutoTranslate = onAutoTranslateClicked,
+                onClickMerge = onMergeClicked,
                 onClickEditNotes = onEditNotesClicked,
                 actionModeCounter = selectedChapterCount,
                 onCancelActionMode = { onAllChapterSelected(false) },
@@ -509,6 +514,7 @@ fun MangaScreenLargeImpl(
     onTranslateDownloadedClicked: (() -> Unit)?,
     onSeriesMemoryClicked: (() -> Unit)?,
     onAutoTranslateClicked: (() -> Unit)?,
+    onMergeClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -564,6 +570,7 @@ fun MangaScreenLargeImpl(
                 onClickTranslateDownloaded = onTranslateDownloadedClicked,
                 onClickSeriesMemory = onSeriesMemoryClicked,
                 onClickAutoTranslate = onAutoTranslateClicked,
+                onClickMerge = onMergeClicked,
                 onClickEditNotes = onEditNotesClicked,
                 onCancelActionMode = { onAllChapterSelected(false) },
                 actionModeCounter = selectedChapterCount,
@@ -815,7 +822,9 @@ private fun LazyListScope.sharedChapterItems(
                                 it + 1,
                             )
                         },
-                    scanlator = item.chapter.scanlator.takeIf { !it.isNullOrBlank() },
+                    scanlator = listOfNotNull(item.sourceLabel, item.chapter.scanlator.takeIf { !it.isNullOrBlank() })
+                        .joinToString(" · ")
+                        .takeIf { it.isNotBlank() },
                     read = item.chapter.read,
                     bookmark = item.chapter.bookmark,
                     selected = item.selected,

@@ -1119,6 +1119,10 @@
     <string name="translation_ocr_paddle">PaddleOCR v5 Korean (downloads 18 MB, more accurate)</string>
     <string name="action_series_memory">Series memory</string>
     <string name="action_auto_translate">Automatic translation…</string>
+    <string name="action_merge">Unify entries…</string>
+    <string name="merge_dialog_title">Unified entry</string>
+    <string name="merge_dialog_hint">Tick the library entries that are the same work (other sources, other languages). They leave the library grid and their chapters appear here, in the reading language when it exists.</string>
+    <string name="merge_translated_label">translated</string>
     <string name="auto_translate_title">Translate new downloads of this series</string>
     <string name="auto_translate_default">Follow the global setting (%1$s)</string>
     <string name="auto_translate_on">Always</string>

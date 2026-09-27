@@ -39,6 +39,7 @@ fun MangaToolbar(
     onClickTranslateDownloaded: (() -> Unit)?,
     onClickSeriesMemory: (() -> Unit)?,
     onClickAutoTranslate: (() -> Unit)?,
+    onClickMerge: (() -> Unit)?,
     onClickEditNotes: () -> Unit,
 
     // For action mode
@@ -156,6 +157,14 @@ fun MangaToolbar(
                             AppBar.OverflowAction(
                                 title = stringResource(MR.strings.action_auto_translate),
                                 onClick = onClickAutoTranslate,
+                            ),
+                        )
+                    }
+                    if (onClickMerge != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_merge),
+                                onClick = onClickMerge,
                             ),
                         )
                     }

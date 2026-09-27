@@ -53,6 +53,7 @@ import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.launch
 import logcat.LogPriority
+import mihon.feature.merge.MergeDialog
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.feature.translation.memory.SeriesMemoryScreen
@@ -123,6 +124,7 @@ class MangaScreen(
             },
             onSeriesMemoryClicked = { navigator.push(SeriesMemoryScreen(successState.manga.id)) },
             onAutoTranslateClicked = viewModel::showAutoTranslateDialog,
+            onMergeClicked = viewModel::showMergeDialog,
             onAddToLibraryClicked = {
                 viewModel.toggleFavorite()
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -270,6 +272,17 @@ class MangaScreen(
                 } else {
                     LoadingScreen(Modifier.systemBarsPadding())
                 }
+            }
+            is MangaViewModel.Dialog.Merge -> {
+                MergeDialog(
+                    candidates = dialog.candidates,
+                    initialMembers = dialog.members,
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { members ->
+                        viewModel.setGroupMembers(members)
+                        onDismissRequest()
+                    },
+                )
             }
             is MangaViewModel.Dialog.AutoTranslate -> {
                 AutoTranslateDialog(

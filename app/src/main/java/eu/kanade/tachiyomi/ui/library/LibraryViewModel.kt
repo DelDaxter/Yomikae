@@ -45,6 +45,7 @@ import kotlinx.coroutines.flow.update
 import mihon.core.common.utils.mutate
 import mihon.domain.library.model.search.QueryNode
 import mihon.feature.library.matches
+import mihon.feature.merge.MangaGroupStore
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.util.lang.compareToWithCollator
@@ -93,6 +94,7 @@ class LibraryViewModel(
     private val downloadManager: DownloadManager,
     private val downloadCache: DownloadCache,
     private val trackerManager: TrackerManager,
+    private val groupStore: MangaGroupStore,
 ) : ViewModel() {
 
     private val searchQuery = MutableStateFlow<String?>(null)
@@ -404,8 +406,11 @@ class LibraryViewModel(
             getLibraryManga.subscribe(),
             getLibraryItemPreferencesFlow(),
             downloadCache.changes,
-        ) { libraryManga, preferences, _ ->
-            libraryManga.map { manga ->
+            groupStore.groups,
+        ) { libraryManga, preferences, _, groups ->
+            // Yomikae: entries merged into a unified entry stay out of the library grid.
+            val hidden = groupStore.memberIds(groups)
+            libraryManga.filterNot { it.manga.id in hidden }.map { manga ->
                 LibraryItem(
                     libraryManga = manga,
                     downloadCount = downloadManager.getDownloadCount(manga.manga),
@@ -577,6 +582,8 @@ class LibraryViewModel(
                     )
                 }
                 updateManga.awaitAll(toDelete)
+                // Yomikae: entries out of the library leave their unified entry.
+                mangas.forEach { groupStore.forget(it.id) }
             }
 
             if (deleteChapters) {

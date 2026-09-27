@@ -54,17 +54,24 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.domain.chapter.interactor.FilterChaptersForDownload
 import mihon.domain.source.interactor.UpdateMangaFromRemote
+import mihon.feature.merge.MangaGroupStore
+import mihon.feature.merge.MergeCandidate
+import mihon.feature.merge.MergedChapters
 import mihon.feature.translation.ChapterTranslationJob
 import mihon.feature.translation.TranslationPreferences
 import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationState
 import mihon.feature.translation.TranslationStore
+import mihon.feature.translation.memory.SeriesMemoryStore
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
@@ -85,6 +92,7 @@ import tachiyomi.domain.chapter.service.calculateChapterGap
 import tachiyomi.domain.chapter.service.getChapterSort
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.manga.interactor.GetDuplicateLibraryManga
+import tachiyomi.domain.manga.interactor.GetFavorites
 import tachiyomi.domain.manga.interactor.GetMangaWithChapters
 import tachiyomi.domain.manga.interactor.SetMangaChapterFlags
 import tachiyomi.domain.manga.model.Manga
@@ -132,6 +140,9 @@ class MangaViewModel(
     private val translationStore: TranslationStore,
     private val translationQueue: TranslationQueue,
     private val translationPreferences: TranslationPreferences,
+    private val groupStore: MangaGroupStore,
+    private val getFavorites: GetFavorites,
+    private val seriesMemoryStore: SeriesMemoryStore,
 ) : ViewModel() {
 
     val state: StateFlow<MangaViewModel.State>
@@ -190,17 +201,35 @@ class MangaViewModel(
 
     init {
         viewModelScope.launchIO {
+            // Yomikae: a unified entry also watches the chapters of its member entries.
+            val memberChapters = groupStore.groups
+                .map { groups -> groups.firstOrNull { it.primaryMangaId == mangaId }?.memberIds.orEmpty() }
+                .distinctUntilChanged()
+                .flatMapLatest { ids ->
+                    if (ids.isEmpty()) {
+                        flowOf(emptyList())
+                    } else {
+                        combine(
+                            ids.map { id ->
+                                getMangaAndChapters.subscribe(id, applyScanlatorFilter = true)
+                            },
+                        ) { it.toList() }
+                    }
+                }
             combine(
                 getMangaAndChapters.subscribe(mangaId, applyScanlatorFilter = true).distinctUntilChanged(),
                 downloadCache.changes,
                 downloadManager.queueState,
                 translationQueue.items,
-            ) { mangaAndChapters, _, _, _ -> mangaAndChapters }
-                .collectLatest { (manga, chapters) ->
+                memberChapters,
+            ) { mangaAndChapters, _, _, _, members -> mangaAndChapters to members }
+                .collectLatest { (mangaAndChapters, members) ->
+                    val (manga, chapters) = mangaAndChapters
+                    val items = mergedChapterItems(manga, chapters, members)
                     updateSuccessState {
                         it.copy(
                             manga = manga,
-                            chapters = chapters.toChapterListItems(manga),
+                            chapters = items,
                         )
                     }
                 }
@@ -355,6 +384,8 @@ class MangaViewModel(
             if (isFavorited) {
                 // Remove from library
                 if (updateManga.awaitUpdateFavorite(manga.id, false)) {
+                    // Yomikae: an entry out of the library leaves its unified entry.
+                    groupStore.forget(manga.id)
                     // Remove covers and update last modified in db
                     if (manga.removeCovers(coverCache) != manga) {
                         updateManga.awaitUpdateCoverLastModified(manga.id)
@@ -567,9 +598,89 @@ class MangaViewModel(
         }
     }
 
-    private fun List<Chapter>.toChapterListItems(manga: Manga): List<ChapterList.Item> {
-        val isLocal = manga.isLocal()
+    // ---- Yomikae: unified entries (several sources / languages of one work) ----
+
+    /** Entries of the group, by id, refreshed with every chapter update. */
+    private var groupMangas: Map<Long, Manga> = emptyMap()
+
+    private suspend fun mergedChapterItems(
+        manga: Manga,
+        chapters: List<Chapter>,
+        members: List<Pair<Manga, List<Chapter>>>,
+    ): List<ChapterList.Item> {
+        if (members.isEmpty()) {
+            groupMangas = emptyMap()
+            return chapters.toChapterListItems(manga)
+        }
+        val mangas = (members.map { it.first } + manga).associateBy { it.id }
+        groupMangas = mangas
+        val infos = mangas.values.associate { m ->
+            val source = sourceManager.getOrStub(m.source)
+            m.id to MergedChapters.Member(
+                mangaId = m.id,
+                language = source.lang.takeIf { it.isNotBlank() },
+                sourceName = source.name,
+                numberOffset = seriesMemoryStore.load(m.id).referenceOffset,
+            )
+        }
+        val rows = MergedChapters.merge(
+            chaptersByManga = members.associate { it.first.id to it.second } + (manga.id to chapters),
+            members = infos,
+            targetLanguage = translationPreferences.targetLanguage.get(),
+            sourceLanguage = translationPreferences.sourceLanguage.get(),
+            isTranslated = translationStore::isChapterTranslated,
+            translatedLabel = context.stringResource(MR.strings.merge_translated_label),
+        )
+        val items = rows.map { it.chapter }.toChapterListItems { id -> mangas[id] ?: manga }
+        return items.zip(rows) { item, row -> item.copy(sourceLabel = row.label) }
+    }
+
+    /** The entry a chapter belongs to: this one, or a member of its group. */
+    private suspend fun mangaOf(mangaId: Long): Manga? =
+        successState?.manga?.takeIf { it.id == mangaId } ?: groupMangas[mangaId]
+            ?: mangaRepository.getMangaById(mangaId)
+
+    fun showMergeDialog() {
+        val manga = successState?.manga ?: return
+        viewModelScope.launchIO {
+            val candidates = getFavorites.await()
+                .filter { it.id != manga.id }
+                .sortedBy { it.title }
+                .map { m ->
+                    val source = sourceManager.getOrStub(m.source)
+                    MergeCandidate(m.id, m.title, "${source.lang.uppercase()} · ${source.name}")
+                }
+            val members = groupStore.groupOfPrimary(manga.id)?.memberIds.orEmpty().toSet()
+            updateSuccessState { it.copy(dialog = Dialog.Merge(candidates, members)) }
+        }
+    }
+
+    /** Saves the group; raw entries without a reference edition get the group's translated one. */
+    fun setGroupMembers(memberIds: List<Long>) {
+        val manga = successState?.manga ?: return
+        groupStore.setMembers(manga.id, memberIds)
+        viewModelScope.launchIO {
+            val entries = (listOf(manga.id) + memberIds).mapNotNull { id -> mangaRepository.getMangaById(id) }
+            val langOf = entries.associate { it.id to sourceManager.getOrStub(it.source).lang }
+            val target = translationPreferences.targetLanguage.get()
+            val source = translationPreferences.sourceLanguage.get()
+            val reference = entries.firstOrNull { langOf[it.id] == target } ?: return@launchIO
+            entries.filter { langOf[it.id] == source }.forEach { raw ->
+                if (seriesMemoryStore.load(raw.id).referenceMangaId == null) {
+                    seriesMemoryStore.update(raw.id) { it.copy(referenceMangaId = reference.id) }
+                }
+            }
+        }
+    }
+
+    private fun List<Chapter>.toChapterListItems(manga: Manga): List<ChapterList.Item> =
+        toChapterListItems { manga }
+
+    /** Yomikae: [mangaOf] gives the entry a chapter belongs to (a unified entry mixes several). */
+    private fun List<Chapter>.toChapterListItems(mangaOf: (Long) -> Manga): List<ChapterList.Item> {
         return map { chapter ->
+            val manga = mangaOf(chapter.mangaId)
+            val isLocal = manga.isLocal()
             val activeDownload = if (isLocal) {
                 null
             } else {
@@ -846,8 +957,11 @@ class MangaViewModel(
      * @param chapters the list of chapters to download.
      */
     private suspend fun downloadChapters(chapters: List<Chapter>) {
-        val manga = successState?.manga ?: return
-        downloadManager.downloadChapters(manga, chapters)
+        // Yomikae: a unified entry mixes chapters of several entries, each goes to its own.
+        chapters.groupBy { it.mangaId }.forEach { (id, list) ->
+            val manga = mangaOf(id) ?: return@forEach
+            downloadManager.downloadChapters(manga, list)
+        }
         toggleAllSelection(false)
     }
 
@@ -872,12 +986,17 @@ class MangaViewModel(
             state.chapters.any { it.id == chapter.id && it.isDownloaded }
         }
         if (downloaded.isEmpty()) return
-        ChapterTranslationJob.start(
-            context,
-            state.manga.id,
-            state.manga.title,
-            downloaded.map { ChapterTranslationJob.Request(it.id, it.name) },
-        )
+        viewModelScope.launchIO {
+            downloaded.groupBy { it.mangaId }.forEach { (id, list) ->
+                val manga = mangaOf(id) ?: return@forEach
+                ChapterTranslationJob.start(
+                    context,
+                    manga.id,
+                    manga.title,
+                    list.map { ChapterTranslationJob.Request(it.id, it.name) },
+                )
+            }
+        }
         context.toast(MR.strings.translation_started)
         toggleAllSelection(false)
     }
@@ -925,12 +1044,9 @@ class MangaViewModel(
     fun deleteChapters(chapters: List<Chapter>) {
         viewModelScope.launchNonCancellable {
             try {
-                successState?.let { state ->
-                    downloadManager.deleteChapters(
-                        chapters,
-                        state.manga,
-                        state.source,
-                    )
+                chapters.groupBy { it.mangaId }.forEach { (id, list) ->
+                    val manga = mangaOf(id) ?: return@forEach
+                    downloadManager.deleteChapters(list, manga, sourceManager.getOrStub(manga.source))
                 }
             } catch (e: Throwable) {
                 logcat(LogPriority.ERROR, e)
@@ -1173,6 +1289,7 @@ class MangaViewModel(
         data class Migrate(val target: Manga, val current: Manga) : Dialog
         data class SetFetchInterval(val manga: Manga) : Dialog
         data class AutoTranslate(val manga: Manga) : Dialog
+        data class Merge(val candidates: List<MergeCandidate>, val members: Set<Long>) : Dialog
         data object SettingsSheet : Dialog
         data object TrackSheet : Dialog
         data object FullCover : Dialog
@@ -1308,6 +1425,8 @@ sealed class ChapterList {
         val selected: Boolean = false,
         val translationState: TranslationState = TranslationState.NONE,
         val translationProgress: Float = 0f,
+        /** Yomikae: "EN · Webtoons.com" on the rows of a unified entry. */
+        val sourceLabel: String? = null,
     ) : ChapterList() {
         val id = chapter.id
         val isDownloaded = downloadState == Download.State.DOWNLOADED
