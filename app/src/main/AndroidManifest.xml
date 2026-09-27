@@ -49,6 +49,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Tachiyomi">
 
+        <!-- Yomikae: LiteRT-LM GPU backend for the embedded translation model -->
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+
+
         <activity
             android:name=".ui.main.MainActivity"
             android:exported="true"

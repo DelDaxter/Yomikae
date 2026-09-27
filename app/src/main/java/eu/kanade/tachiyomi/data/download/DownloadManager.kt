@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
+import mihon.feature.translation.TranslationQueue
+import mihon.feature.translation.TranslationStore
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.storage.extension
 import tachiyomi.core.common.util.lang.launchIO
@@ -25,6 +27,7 @@ import tachiyomi.core.common.util.system.ImageUtil
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.category.interactor.GetCategories
 import tachiyomi.domain.chapter.interactor.GetChapter
+import tachiyomi.domain.chapter.interactor.GetChaptersByMangaId
 import tachiyomi.domain.chapter.model.Chapter
 import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.manga.interactor.GetManga
@@ -50,6 +53,10 @@ class DownloadManager(
     private val downloadPreferences: DownloadPreferences,
     private val downloader: Downloader,
     private val pendingDeleter: DownloadPendingDeleter,
+    // Yomikae: translated pages live next to the downloads and go away with them
+    private val translationStore: TranslationStore,
+    private val translationQueue: TranslationQueue,
+    private val getChaptersByMangaId: GetChaptersByMangaId,
 ) {
 
     val isRunning: Boolean
@@ -256,6 +263,7 @@ class DownloadManager(
             val (mangaDir, chapterDirs) = provider.findChapterDirs(filteredChapters, manga, source)
             chapterDirs.forEach { it.delete() }
             cache.removeChapters(filteredChapters, manga)
+            deleteTranslations(filteredChapters)
 
             // Delete manga directory if empty
             if (mangaDir?.listFiles()?.isEmpty() == true) {
@@ -278,6 +286,7 @@ class DownloadManager(
             }
             provider.findMangaDir(manga.title, source)?.delete()
             cache.removeManga(manga)
+            deleteTranslations(getChaptersByMangaId.await(manga.id))
 
             // Delete source directory if empty
             val sourceDir = provider.findSourceDir(source)
@@ -285,6 +294,17 @@ class DownloadManager(
                 sourceDir.delete()
                 cache.removeSource(source)
             }
+        }
+    }
+
+    /**
+     * Yomikae: a translation only makes sense for a downloaded chapter, so it is deleted (and
+     * dequeued) together with the download.
+     */
+    private fun deleteTranslations(chapters: List<Chapter>) {
+        chapters.forEach { chapter ->
+            translationQueue.remove(chapter.id)
+            translationStore.deleteChapter(chapter.id)
         }
     }
 

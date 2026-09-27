@@ -20,6 +20,7 @@ import mihon.icons.materialsymbols.rounded.Info
 import mihon.icons.materialsymbols.rounded.QueryStats
 import mihon.icons.materialsymbols.rounded.Settings
 import mihon.icons.materialsymbols.rounded.Storage
+import mihon.icons.materialsymbols.rounded.Translate
 import mihon.icons.materialsymbols.rounded.VolunteerActivism
 import tachiyomi.core.common.Constants
 import tachiyomi.i18n.MR
@@ -36,6 +37,8 @@ fun MoreScreen(
     incognitoMode: Boolean,
     onIncognitoModeChange: (Boolean) -> Unit,
     onClickDownloadQueue: () -> Unit,
+    translationQueuePendingProvider: () -> Int,
+    onClickTranslationQueue: () -> Unit,
     onClickCategories: () -> Unit,
     onClickStats: () -> Unit,
     onClickDataAndStorage: () -> Unit,
@@ -100,6 +103,16 @@ fun MoreScreen(
                     },
                     icon = MaterialSymbols.Rounded.Download,
                     onPreferenceClick = onClickDownloadQueue,
+                )
+            }
+            item {
+                // Yomikae
+                val pending = translationQueuePendingProvider()
+                TextPreferenceWidget(
+                    title = stringResource(MR.strings.label_translation_queue),
+                    subtitle = if (pending > 0) stringResource(MR.strings.translation_queue_summary, pending) else null,
+                    icon = MaterialSymbols.Rounded.Translate,
+                    onPreferenceClick = onClickTranslationQueue,
                 )
             }
             item {

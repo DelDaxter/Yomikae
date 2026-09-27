@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -121,6 +122,10 @@ fun MangaInfoBox(
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    /** Yomikae: unified entry, the title shown first (reading language); null = the entry's own. */
+    displayTitle: String? = null,
+    /** Yomikae: the other edition's title of a unified entry, under the main title. */
+    alternativeTitle: String? = null,
 ) {
     Box(modifier = modifier) {
         // Backdrop
@@ -157,6 +162,8 @@ fun MangaInfoBox(
                     isStubSource = isStubSource,
                     onCoverClick = onCoverClick,
                     doSearch = doSearch,
+                    displayTitle = displayTitle,
+                    alternativeTitle = alternativeTitle,
                 )
             } else {
                 MangaAndSourceTitlesLarge(
@@ -166,6 +173,8 @@ fun MangaInfoBox(
                     isStubSource = isStubSource,
                     onCoverClick = onCoverClick,
                     doSearch = doSearch,
+                    displayTitle = displayTitle,
+                    alternativeTitle = alternativeTitle,
                 )
             }
         }
@@ -256,13 +265,17 @@ fun ExpandableMangaDescription(
     onCopyTagToClipboard: (tag: String) -> Unit,
     onEditNotes: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Yomikae: unified entry, the other edition's synopsis, shown on demand. */
+    alternativeDescription: String? = null,
 ) {
     Column(modifier = modifier) {
         val (expanded, onExpanded) = rememberSaveable {
             mutableStateOf(defaultExpandState)
         }
+        var showAlternative by rememberSaveable { mutableStateOf(false) }
+        val shown = if (showAlternative && alternativeDescription != null) alternativeDescription else description
         val desc =
-            description.takeIf { !it.isNullOrBlank() } ?: stringResource(MR.strings.description_placeholder)
+            shown.takeIf { !it.isNullOrBlank() } ?: stringResource(MR.strings.description_placeholder)
 
         MangaSummary(
             description = desc,
@@ -274,6 +287,19 @@ fun ExpandableMangaDescription(
                 .padding(horizontal = 16.dp)
                 .clickableNoIndication { onExpanded(!expanded) },
         )
+        if (alternativeDescription != null) {
+            TextButton(
+                onClick = { showAlternative = !showAlternative },
+                modifier = Modifier.padding(horizontal = 8.dp),
+            ) {
+                val label = if (showAlternative) {
+                    MR.strings.merge_show_translated_synopsis
+                } else {
+                    MR.strings.merge_show_original_synopsis
+                }
+                Text(stringResource(label))
+            }
+        }
         val tags = tagsProvider()
         if (!tags.isNullOrEmpty()) {
             Box(
@@ -350,6 +376,8 @@ private fun MangaAndSourceTitlesLarge(
     isStubSource: Boolean,
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
+    displayTitle: String? = null,
+    alternativeTitle: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -368,7 +396,7 @@ private fun MangaAndSourceTitlesLarge(
         )
         Spacer(modifier = Modifier.height(16.dp))
         MangaContentInfo(
-            title = manga.title,
+            title = displayTitle ?: manga.title,
             author = manga.author,
             artist = manga.artist,
             status = manga.status,
@@ -376,6 +404,7 @@ private fun MangaAndSourceTitlesLarge(
             isStubSource = isStubSource,
             doSearch = doSearch,
             textAlign = TextAlign.Center,
+            alternativeTitle = alternativeTitle,
         )
     }
 }
@@ -388,6 +417,8 @@ private fun MangaAndSourceTitlesSmall(
     isStubSource: Boolean,
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
+    displayTitle: String? = null,
+    alternativeTitle: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -411,13 +442,14 @@ private fun MangaAndSourceTitlesSmall(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             MangaContentInfo(
-                title = manga.title,
+                title = displayTitle ?: manga.title,
                 author = manga.author,
                 artist = manga.artist,
                 status = manga.status,
                 source = source,
                 isStubSource = isStubSource,
                 doSearch = doSearch,
+                alternativeTitle = alternativeTitle,
             )
         }
     }
@@ -433,6 +465,7 @@ private fun ColumnScope.MangaContentInfo(
     isStubSource: Boolean,
     doSearch: (query: String, global: Boolean) -> Unit,
     textAlign: TextAlign? = LocalTextStyle.current.textAlign,
+    alternativeTitle: String? = null,
 ) {
     val context = LocalContext.current
     Text(
@@ -451,6 +484,21 @@ private fun ColumnScope.MangaContentInfo(
         ),
         textAlign = textAlign,
     )
+
+    // Yomikae: the same work's title in the other language (unified entry).
+    if (!alternativeTitle.isNullOrBlank()) {
+        Text(
+            text = alternativeTitle,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+                .secondaryItemAlpha()
+                .clickableNoIndication(
+                    onLongClick = { context.copyToClipboard(alternativeTitle, alternativeTitle) },
+                    onClick = { doSearch(alternativeTitle, true) },
+                ),
+            textAlign = textAlign,
+        )
+    }
 
     Spacer(modifier = Modifier.height(2.dp))
 

@@ -53,8 +53,11 @@ import eu.kanade.tachiyomi.util.system.toShareIntent
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.launch
 import logcat.LogPriority
+import mihon.feature.merge.MergeDialog
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
+import mihon.feature.translation.memory.SeriesMemoryScreen
+import mihon.feature.translation.ui.AutoTranslateDialog
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
@@ -113,6 +116,16 @@ class MangaScreen(
             navigateUp = navigator::pop,
             onChapterClicked = { openChapter(context, it) },
             onDownloadChapter = viewModel::runChapterDownloadActions.takeIf { !successState.source.isLocalOrStub() },
+            onTranslateChapter = viewModel::runChapterTranslationActions.takeIf {
+                !successState.source.isLocalOrStub()
+            },
+            onTranslateDownloadedClicked = viewModel::translateAllDownloaded.takeIf {
+                !successState.source.isLocalOrStub()
+            },
+            onSeriesMemoryClicked = { navigator.push(SeriesMemoryScreen(successState.manga.id)) },
+            onAutoTranslateClicked = viewModel::showAutoTranslateDialog,
+            // Only an entry of the library can be the primary of a unified entry.
+            onMergeClicked = viewModel::showMergeDialog.takeIf { successState.manga.favorite },
             onAddToLibraryClicked = {
                 viewModel.toggleFavorite()
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -260,6 +273,28 @@ class MangaScreen(
                 } else {
                     LoadingScreen(Modifier.systemBarsPadding())
                 }
+            }
+            is MangaViewModel.Dialog.Merge -> {
+                MergeDialog(
+                    candidates = dialog.candidates,
+                    initialMembers = dialog.members,
+                    onDismissRequest = onDismissRequest,
+                    onConfirm = { members ->
+                        viewModel.setGroupMembers(members)
+                        onDismissRequest()
+                    },
+                )
+            }
+            is MangaViewModel.Dialog.AutoTranslate -> {
+                AutoTranslateDialog(
+                    current = viewModel.autoTranslateMode(dialog.manga.id),
+                    globalEnabled = viewModel.autoTranslateGlobal(),
+                    onDismissRequest = onDismissRequest,
+                    onSelected = { mode ->
+                        viewModel.setAutoTranslateMode(dialog.manga.id, mode)
+                        onDismissRequest()
+                    },
+                )
             }
             is MangaViewModel.Dialog.SetFetchInterval -> {
                 SetIntervalDialog(

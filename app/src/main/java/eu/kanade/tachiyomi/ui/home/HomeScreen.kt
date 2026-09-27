@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import mihon.app.di.appGraph
+import mihon.feature.translation.ui.TranslationQueueScreen
 import soup.compose.material.motion.animation.materialFadeThroughIn
 import soup.compose.material.motion.animation.materialFadeThroughOut
 import tachiyomi.i18n.MR
@@ -159,6 +160,9 @@ object HomeScreen : Screen() {
                         if (it is Tab.More && it.toDownloads) {
                             navigator.push(DownloadQueueScreen)
                         }
+                        if (it is Tab.More && it.toTranslations) {
+                            navigator.push(TranslationQueueScreen)
+                        }
                     }
                 }
             }
@@ -271,6 +275,6 @@ object HomeScreen : Screen() {
         data object Updates : Tab
         data object History : Tab
         data class Browse(val toExtensions: Boolean = false) : Tab
-        data class More(val toDownloads: Boolean) : Tab
+        data class More(val toDownloads: Boolean, val toTranslations: Boolean = false) : Tab
     }
 }

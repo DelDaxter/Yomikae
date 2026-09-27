@@ -36,7 +36,7 @@ internal fun LibraryCompactGrid(
             val manga = libraryItem.libraryManga.manga
             MangaCompactGridItem(
                 isSelected = manga.id in selection,
-                title = manga.title.takeIf { showTitle },
+                title = (libraryItem.displayTitle ?: manga.title).takeIf { showTitle },
                 coverData = MangaCover(
                     mangaId = manga.id,
                     sourceId = manga.source,
@@ -49,6 +49,7 @@ internal fun LibraryCompactGrid(
                     UnreadBadge(count = libraryItem.badges.unreadCount)
                 },
                 coverBadgeEnd = {
+                    UnifiedBadge(count = libraryItem.badges.unifiedCount)
                     LanguageBadge(
                         isLocal = libraryItem.badges.isLocal,
                         sourceLanguage = libraryItem.badges.sourceLanguage,

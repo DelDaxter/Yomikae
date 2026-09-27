@@ -7,6 +7,7 @@ import eu.kanade.tachiyomi.data.download.DownloadProvider
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.reader.model.ReaderChapter
+import mihon.app.di.appGraph
 import mihon.core.archive.archiveReader
 import mihon.core.archive.epubReader
 import tachiyomi.core.common.i18n.stringResource
@@ -48,6 +49,9 @@ class ChapterLoader(
 
                 val pages = loader.getPages()
                     .onEach { it.chapter = chapter }
+
+                // Yomikae: swap in translated pages when the user asked for them.
+                chapter.chapter.id?.let { context.appGraph.translationStore.applyTo(it, pages) }
 
                 if (pages.isEmpty()) {
                     throw Exception(context.stringResource(MR.strings.page_list_empty_error))

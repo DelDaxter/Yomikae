@@ -27,6 +27,18 @@ internal fun UnreadBadge(count: Long) {
     }
 }
 
+/** Yomikae: a unified entry shows how many entries it gathers. */
+@Composable
+internal fun UnifiedBadge(count: Int) {
+    if (count > 1) {
+        Badge(
+            text = "×$count",
+            color = MaterialTheme.colorScheme.secondary,
+            textColor = MaterialTheme.colorScheme.onSecondary,
+        )
+    }
+}
+
 @Composable
 internal fun LanguageBadge(
     isLocal: Boolean,

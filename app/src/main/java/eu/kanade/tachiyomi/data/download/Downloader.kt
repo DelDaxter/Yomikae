@@ -43,6 +43,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import logcat.LogPriority
 import mihon.core.archive.ZipWriter
+import mihon.feature.translation.ChapterTranslationJob
+import mihon.feature.translation.TranslationPreferences
 import nl.adaptivity.xmlutil.serialization.XML
 import okhttp3.Response
 import tachiyomi.core.common.i18n.stringResource
@@ -83,6 +85,7 @@ class Downloader(
     private val getTracks: GetTracks,
     private val store: DownloadStore,
     private val notifier: DownloadNotifier,
+    private val translationPreferences: TranslationPreferences,
 ) {
     /**
      * Queue where active downloads are kept.
@@ -406,6 +409,16 @@ class Downloader(
             DiskUtil.createNoMediaFile(tmpDir, context)
 
             download.status = Download.State.DOWNLOADED
+
+            // Yomikae: translate right away when the series (or the global setting) asks for it.
+            if (translationPreferences.autoTranslateFor(download.manga.id)) {
+                ChapterTranslationJob.start(
+                    context,
+                    download.manga.id,
+                    download.manga.title,
+                    listOf(ChapterTranslationJob.Request(download.chapter.id, download.chapter.name)),
+                )
+            }
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
             // If the page list threw, it will resume here

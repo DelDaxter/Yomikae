@@ -36,6 +36,10 @@ fun MangaToolbar(
     onClickEditCategory: (() -> Unit)?,
     onClickRefresh: () -> Unit,
     onClickMigrate: (() -> Unit)?,
+    onClickTranslateDownloaded: (() -> Unit)?,
+    onClickSeriesMemory: (() -> Unit)?,
+    onClickAutoTranslate: (() -> Unit)?,
+    onClickMerge: (() -> Unit)?,
     onClickEditNotes: () -> Unit,
 
     // For action mode
@@ -129,6 +133,38 @@ fun MangaToolbar(
                             AppBar.OverflowAction(
                                 title = stringResource(MR.strings.action_migrate),
                                 onClick = onClickMigrate,
+                            ),
+                        )
+                    }
+                    if (onClickTranslateDownloaded != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_translate_downloaded),
+                                onClick = onClickTranslateDownloaded,
+                            ),
+                        )
+                    }
+                    if (onClickSeriesMemory != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_series_memory),
+                                onClick = onClickSeriesMemory,
+                            ),
+                        )
+                    }
+                    if (onClickAutoTranslate != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_auto_translate),
+                                onClick = onClickAutoTranslate,
+                            ),
+                        )
+                    }
+                    if (onClickMerge != null) {
+                        add(
+                            AppBar.OverflowAction(
+                                title = stringResource(MR.strings.action_merge),
+                                onClick = onClickMerge,
                             ),
                         )
                     }

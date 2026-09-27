@@ -93,6 +93,7 @@ import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.app.di.AppGraph
 import mihon.core.metro.metroGraph
+import mihon.feature.translation.TranslationPreferences
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.launchIO
@@ -117,6 +118,8 @@ class ReaderActivity : BaseActivity() {
     }
 
     @Inject private lateinit var readerPreferences: ReaderPreferences
+
+    @Inject private lateinit var translationPreferences: TranslationPreferences
 
     @Inject private lateinit var preferences: BasePreferences
 
@@ -454,6 +457,7 @@ class ReaderActivity : BaseActivity() {
         val cropBorderWebtoon by readerPreferences.cropBordersWebtoon.collectAsState()
         val isPagerType = ReadingMode.isPagerType(viewModel.getMangaReadingMode())
         val cropEnabled = if (isPagerType) cropBorderPaged else cropBorderWebtoon
+        val translationEnabled by translationPreferences.showTranslated.collectAsState()
 
         val verticalNavigatorModes by readerPreferences.verticalNavigator.collectAsState()
         val verticalNavigator = verticalNavigatorModes.contains(
@@ -516,6 +520,19 @@ class ReaderActivity : BaseActivity() {
                 val enabled = viewModel.toggleCropBorders()
                 menuToggleToast?.cancel()
                 menuToggleToast = toast(if (enabled) MR.strings.on else MR.strings.off)
+            },
+            translationEnabled = translationEnabled,
+            onClickTranslation = {
+                val enabled = viewModel.toggleTranslatedPages()
+                menuToggleToast?.cancel()
+                val hasTranslation = viewModel.hasTranslationForCurrentChapter()
+                menuToggleToast = toast(
+                    when {
+                        enabled && !hasTranslation -> MR.strings.translation_none_for_chapter
+                        enabled -> MR.strings.on
+                        else -> MR.strings.off
+                    },
+                )
             },
             onClickSettings = viewModel::openSettingsDialog,
         )
