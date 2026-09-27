@@ -26,10 +26,6 @@ import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -266,58 +262,33 @@ class ChapterTranslationJob(
 
             val dir = store.chapterDir(chapter.id, variant).apply { mkdirs() }
 
-            // The OCR of page N+1 (CPU) runs while page N is being translated (GPU or network).
-            val finished = coroutineScope {
-                /** Reads a page ahead of time; null when there is nothing to read for it. */
-                fun readAhead(index: Int): Deferred<PageTranslator.Prepared?>? {
-                    val page = pages.getOrNull(index) ?: return null
-                    if (store.pageFile(chapter.id, page.index, variant).exists()) return null
-                    val openStream = page.stream ?: return null
-                    return async(Dispatchers.IO) {
-                        // Read the whole page once, like the reader does, then work from memory.
-                        translator.read(openStream().use { it.readBytes() })
-                    }
+            // Pages are strictly sequential. Reading page N+1 (OCR on the CPU) while page N is
+            // translated was tried and measured slower on a Galaxy S26 (4.3 s of translation per
+            // page instead of 2.5): ONNX Runtime takes every core and the GPU model still needs
+            // the CPU for tokenizing and sampling. Not worth 0.2 s of OCR.
+            for ((index, page) in pages.withIndex()) {
+                if (isStopped || queue.shouldYield(chapter.id)) {
+                    if (!queue.isCancelled(chapter.id)) queue.markPending(chapter.id)
+                    return false
+                }
+                showProgress(chapter.name, index + 1, pages.size)
+
+                val target = store.pageFile(chapter.id, page.index, variant)
+                if (target.exists()) {
+                    queue.markPage(chapter.id, index + 1, pageMillis = null)
+                    continue
                 }
 
-                var ahead: Deferred<PageTranslator.Prepared?>? = null
-                try {
-                    for ((index, page) in pages.withIndex()) {
-                        if (isStopped || queue.shouldYield(chapter.id)) {
-                            if (!queue.isCancelled(chapter.id)) queue.markPending(chapter.id)
-                            return@coroutineScope false
-                        }
-                        showProgress(chapter.name, index + 1, pages.size)
-
-                        val target = store.pageFile(chapter.id, page.index, variant)
-                        if (target.exists()) {
-                            queue.markPage(chapter.id, index + 1, pageMillis = null)
-                            continue
-                        }
-
-                        val started = System.currentTimeMillis()
-                        val prepared = ahead?.await() ?: run {
-                            val openStream = page.stream ?: return@run null
-                            translator.read(openStream().use { it.readBytes() })
-                        }
-                        ahead = readAhead(index + 1)
-                        val result = prepared?.let { translator.finish(it) }
-                        writePage(dir, target, page.index, result, chapter, queue.isCancelled(chapter.id))
-                            ?: return@coroutineScope false
-                        val elapsed = System.currentTimeMillis() - started
-                        logcat {
-                            "Translation: page ${page.index} done in $elapsed ms (${result?.jpeg?.size ?: 0} bytes)"
-                        }
-                        queue.markPage(chapter.id, index + 1, elapsed)
-                    }
-                    true
-                } finally {
-                    ahead?.let { pending ->
-                        pending.cancel()
-                        runCatching { pending.await()?.recycle() }
-                    }
-                }
+                val started = System.currentTimeMillis()
+                val openStream = page.stream ?: continue
+                // Read the whole page once, like the reader does, then work from memory.
+                val prepared = translator.read(openStream().use { it.readBytes() })
+                val result = prepared?.let { translator.finish(it) }
+                writePage(dir, target, page.index, result, chapter, queue.isCancelled(chapter.id)) ?: return false
+                val elapsed = System.currentTimeMillis() - started
+                logcat { "Translation: page ${page.index} done in $elapsed ms (${result?.jpeg?.size ?: 0} bytes)" }
+                queue.markPage(chapter.id, index + 1, elapsed)
             }
-            if (!finished) return false
 
             if (isStopped) {
                 queue.markPending(chapter.id)
