@@ -34,14 +34,37 @@ data class SeriesMemory(
     @Serializable
     data class TermPair(val source: String, val target: String)
 
-    /** Pairs handed to the translator: user glossary first, then the human examples. */
-    fun promptPairs(maxExamples: Int = MAX_PROMPT_EXAMPLES): List<Pair<String, String>> =
-        glossary.map { it.source to it.target } + examples.take(maxExamples).map { it.source to it.target }
+    /**
+     * Pairs handed to the translator for one page: the user glossary, then the examples that
+     * share words with the page's lines (most shared first), completed with the first stored
+     * examples (the most recurring terms of the series) up to [maxExamples].
+     */
+    fun promptPairs(pageLines: List<String>, maxExamples: Int = MAX_PROMPT_EXAMPLES): List<Pair<String, String>> {
+        val pageTokens = pageLines.flatMap { tokens(it) }.toSet()
+        val relevant = examples
+            .map { pair -> pair to tokens(pair.source).count { it in pageTokens } }
+            .filter { it.second > 0 }
+            .sortedByDescending { it.second }
+            .map { it.first }
+        val chosen = LinkedHashSet<TermPair>()
+        chosen += relevant.take(maxExamples * 2 / 3)
+        for (pair in examples) {
+            if (chosen.size >= maxExamples) break
+            chosen += pair
+        }
+        return glossary.map { it.source to it.target } + chosen.map { it.source to it.target }
+    }
 
     companion object {
         const val MAX_PROMPT_EXAMPLES = 60
         const val MAX_STORED_EXAMPLES = 400
         const val MAX_LINE_LENGTH = 8
+
+        /** Word-like pieces of a line, 2 characters or more, punctuation stripped. */
+        fun tokens(text: String): List<String> = text
+            .split(' ', '\n', '\t', ',', '.', '?', '!', '…', '~', '\'', '"', '(', ')', '[', ']')
+            .map { it.trim() }
+            .filter { it.length >= 2 && it.any { c -> c.isLetter() } }
     }
 }
 

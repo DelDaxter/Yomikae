@@ -59,10 +59,20 @@ class SeriesMemoryBuilder(
             examples += pairs
         }
 
-        // Short pairs first: they carry names and recurring phrases, and cost few tokens.
-        val kept = examples
-            .distinctBy { it.source }
-            .sortedBy { it.source.length + it.target.length }
+        // Pairs whose words come back often across the series (names, places, recurring
+        // terms) first, shorter ones before longer ones; the translator then picks, for each
+        // page, the pairs sharing words with that page.
+        val distinct = examples.distinctBy { it.source }
+        val frequency = HashMap<String, Int>()
+        distinct.forEach { pair ->
+            SeriesMemory.tokens(pair.source).forEach { frequency[it] = (frequency[it] ?: 0) + 1 }
+        }
+        val kept = distinct
+            .sortedWith(
+                compareByDescending<SeriesMemory.TermPair> { pair ->
+                    SeriesMemory.tokens(pair.source).count { (frequency[it] ?: 0) >= 2 }
+                }.thenBy { it.source.length + it.target.length },
+            )
             .take(SeriesMemory.MAX_STORED_EXAMPLES)
         memoryStore.save(memory.copy(examples = kept, alignedChapters = aligned))
         logcat { "Series memory $mangaId: $aligned chapters aligned, ${kept.size} pairs" }

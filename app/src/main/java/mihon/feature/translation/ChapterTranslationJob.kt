@@ -194,7 +194,7 @@ class ChapterTranslationJob(
                 model = preferences.llmModel.get(),
                 targetLanguage = targetLanguage,
                 background = preferences.llmBackground.get(),
-                glossary = memory.promptPairs(),
+                memory = memory,
                 knownLines = memory.lines,
             )
             else -> MlKitTranslator(sourceLanguage, targetLanguage)

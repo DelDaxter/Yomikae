@@ -187,7 +187,7 @@ class SeriesMemoryScreen(private val mangaId: Long) : Screen() {
                                     reload()
                                     context.toast(MR.strings.series_memory_saved)
                                 },
-                            ) { Text(stringResource(MR.strings.action_save)) }
+                            ) { Text(stringResource(MR.strings.series_memory_save)) }
                             Spacer(modifier = Modifier.width(MaterialTheme.padding.small))
                             OutlinedButton(
                                 enabled = memory.lines.isNotEmpty(),

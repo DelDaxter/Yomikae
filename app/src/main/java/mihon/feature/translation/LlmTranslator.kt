@@ -8,6 +8,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import logcat.LogPriority
+import mihon.feature.translation.memory.SeriesMemory
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -35,7 +36,8 @@ class LlmTranslator(
     private val model: String,
     private val targetLanguage: String,
     private val background: String,
-    private val glossary: List<Pair<String, String>> = emptyList(),
+    /** Series memory: glossary and human examples, selected per page. Null = none. */
+    private val memory: SeriesMemory? = null,
     /** Lines already translated for this series (names, shouts): reused verbatim. */
     knownLines: Map<String, String> = emptyMap(),
 ) : TextTranslator {
@@ -80,10 +82,11 @@ class LlmTranslator(
 
     /** Whole page in one prompt; returns null for lines the model did not answer. */
     private suspend fun translateBatch(lines: List<String>): List<String?> {
+        val pairs = memory?.promptPairs(lines).orEmpty()
         val prompt = buildString {
-            if (glossary.isNotEmpty()) {
+            if (pairs.isNotEmpty()) {
                 appendLine("Reference the following translations:")
-                glossary.forEach { (from, to) -> appendLine("`$from` translates to `$to`") }
+                pairs.forEach { (from, to) -> appendLine("`$from` translates to `$to`") }
                 appendLine()
             }
             appendLine("[Background Information]")
