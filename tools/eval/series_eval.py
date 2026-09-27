@@ -31,19 +31,33 @@ def load_strips(dirs):
     return blocks, offset
 
 
-def evaluate(raw_dirs, ref_dirs, min_iou=0.15):
-    raw, hr = load_strips(raw_dirs)
-    ref, hf = load_strips(ref_dirs)
+def match(raw, ref, shift, min_iou):
+    """Pairs raw blocks with reference blocks after shifting the reference strip by `shift` px."""
     rows = []
     for rb in raw:
         best, bi = None, 0.0
         for fb in ref:
-            v = iou(rb, fb)
+            v = iou(rb, {'l': fb['l'], 'r': fb['r'], 't': fb['t'] + shift, 'b': fb['b'] + shift})
             if v > bi:
                 best, bi = fb, v
         if best is not None and bi >= min_iou:
             rows.append((rb['page'], rb['source'], best['target'], rb['target'], similarity(best['target'], rb['target'])))
-    return rows, len(raw), len(ref), hr, hf
+    return rows
+
+
+def evaluate(raw_dirs, ref_dirs, min_iou=0.15):
+    raw, hr = load_strips(raw_dirs)
+    ref, hf = load_strips(ref_dirs)
+    # One edition may carry an extra title card or banner: try a vertical shift of the
+    # reference strip and keep the one that pairs the most bubbles.
+    best_rows, best_shift = [], 0
+    for shift in range(-3000, 3001, 100):
+        rows = match(raw, ref, shift, min_iou)
+        if len(rows) > len(best_rows):
+            best_rows, best_shift = rows, shift
+    if best_shift:
+        print(f'   (decalage vertical de la reference : {best_shift:+d} px)')
+    return best_rows, len(raw), len(ref), hr, hf
 
 
 def main(base, variant, pairs):
