@@ -1,14 +1,13 @@
 <div align="center">
 
-<img src=".github/assets/logo.png" width="128" alt="Yomikae">
+<img src=".github/assets/logo-256.png" width="160" alt="Yomikae">
 
 # Yomikae
 
 ### Lis tes webtoons coréens en anglais, traduits sur ton téléphone
 
-Fork de [Mihon](https://github.com/mihonapp/mihon) (lecteur de manga Android) qui traduit les pages
-automatiquement, **sans serveur ni compte** : lecture du texte, traduction et réécriture dans les bulles
-se font sur l'appareil.
+Lecteur de manga et de webtoons pour Android qui traduit les pages automatiquement, **sans serveur ni
+compte** : lecture du texte, traduction et réécriture dans les bulles se font sur l'appareil.
 
 [![License: Apache-2.0](https://img.shields.io/github/license/DelDaxter/Yomikae?labelColor=27303D&color=0877d2)](/LICENSE)
 
@@ -26,7 +25,7 @@ se font sur l'appareil.
   version disponible la meilleure pour ta langue de lecture (édition officielle, sinon raw traduit).
 - **File de traduction** avec temps restant, ordre modifiable, traduction automatique pendant la lecture ou dès qu'un
   chapitre est téléchargé.
-- Tout le reste est Mihon : sources par extensions, bibliothèque, suivi, sauvegardes.
+- Et tout ce qu'on attend d'un lecteur : sources par extensions, bibliothèque, suivi, sauvegardes.
 
 ## Installation (débutant)
 
@@ -36,8 +35,8 @@ disponible (moins bon, mais léger).
 
 1. **Télécharge l'APK** dans les [Releases](https://github.com/DelDaxter/Yomikae/releases) (fichier
    `Yomikae-…-arm64.apk`) et ouvre-le. Android te demandera d'autoriser l'installation depuis cette source : accepte.
-   Yomikae s'installe à côté de Mihon sans le remplacer.
-2. **Ajoute des sources.** Yomikae n'a aucune source intégrée, comme Mihon. Dans l'app : *Plus → Paramètres →
+   Yomikae s'installe à côté de tes autres lecteurs sans les remplacer.
+2. **Ajoute des sources.** Yomikae n'a aucune source intégrée. Dans l'app : *Plus → Paramètres →
    Explorer → Dépôts d'extensions*, ajoute :
    - `https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json` (sources anglaises, dont Webtoons.com) ;
    - `https://raw.githubusercontent.com/oneulddu/Korean-Mihon-Extensions/repo/index.min.json` (sources coréennes,
@@ -82,17 +81,13 @@ version normale.
 
 ## Licences
 
-Yomikae est sous Apache-2.0, comme Mihon. Les briques ajoutées sont toutes sous licences permissives : PaddleOCR
-(Apache-2.0), ONNX Runtime (MIT), LiteRT-LM (Apache-2.0), modèle Hy-MT2 de Tencent (Apache-2.0), post-traitement
-DBNet adapté de [overlay-translator](https://github.com/ciddwd/overlay-translator) (Apache-2.0). Google ML Kit reste
-disponible comme moteur léger (bibliothèque propriétaire de Google, non requise).
+Yomikae est sous licence Apache-2.0. Les briques de traduction sont toutes sous licences permissives : PaddleOCR
+(Apache-2.0), ONNX Runtime (MIT), LiteRT-LM (Apache-2.0), modèle Hy-MT2 (Apache-2.0). Google ML Kit reste disponible
+comme moteur léger (bibliothèque propriétaire de Google, non requise).
 
 Les modèles ne sont pas dans l'APK : ils sont téléchargés à la première utilisation et vérifiés (SHA-256).
 
-## Crédits
+## Remerciements
 
-[Mihon](https://github.com/mihonapp/mihon) et ses contributeurs ; [Keiyoushi](https://github.com/keiyoushi/extensions)
-et [Korean Mihon Extensions](https://github.com/oneulddu/Korean-Mihon-Extensions) pour les sources ;
-[Tencent Hunyuan](https://huggingface.co/tencent/Hy-MT2-1.8B) et la
-[communauté LiteRT](https://huggingface.co/litert-community/Hy-MT2-1.8B) pour le modèle de traduction ;
-[PaddlePaddle](https://github.com/PaddlePaddle/PaddleOCR) pour l'OCR.
+Merci à tous les projets open source dont Yomikae s'inspire et sur lesquels il s'appuie : lecteur, extensions,
+modèles d'OCR et de traduction, et leurs communautés.
