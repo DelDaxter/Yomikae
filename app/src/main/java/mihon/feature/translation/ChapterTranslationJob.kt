@@ -29,6 +29,9 @@ import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import logcat.LogPriority
 import mihon.app.di.AppGraph
 import mihon.app.di.appGraph
@@ -109,7 +112,12 @@ class ChapterTranslationJob(
         val sourceLanguage = preferences.sourceLanguage.get()
         val targetLanguage = preferences.targetLanguage.get()
         val variant = store.currentVariant()
-        val translator = PageTranslator(sourceLanguage, createTextTranslator(sourceLanguage, targetLanguage))
+        val extractOnly = sourceLanguage == targetLanguage
+        val translator = PageTranslator(
+            sourceLanguage,
+            if (extractOnly) IdentityTranslator() else createTextTranslator(sourceLanguage, targetLanguage),
+            renderPages = !extractOnly,
+        )
         var failures = 0
         try {
             translator.prepare()
@@ -203,11 +211,18 @@ class ChapterTranslationJob(
                 val openStream = page.stream ?: return@forEachIndexed
                 // Read the whole page once, like the reader does, then work from memory.
                 val imageBytes = openStream().use { it.readBytes() }
-                val jpeg = translator.translatePage(imageBytes)
+                val result = translator.translatePage(imageBytes)
+                val jpeg = result?.jpeg
                 if (jpeg != null) {
                     val tmp = File(dir, target.name + ".tmp")
                     tmp.writeBytes(jpeg)
                     if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
+                }
+                if (result != null) {
+                    // Text sidecar: what was read and how it was translated, for evaluation and
+                    // for building per-series glossaries later.
+                    val sidecar = PageSidecar(page.index, result.width, result.height, result.blocks)
+                    File(dir, "%03d.json".format(page.index)).writeText(json.encodeToString(sidecar))
                 }
                 val elapsed = System.currentTimeMillis() - started
                 logcat { "Translation: page ${page.index} done in $elapsed ms (${jpeg?.size ?: 0} bytes)" }
@@ -239,6 +254,17 @@ class ChapterTranslationJob(
 
     /** What the UI asks for: enough to show the chapter in the queue before the job runs. */
     data class Request(val chapterId: Long, val chapterName: String)
+
+    /** Text of one translated page, written as NNN.json next to NNN.jpg. */
+    @Serializable
+    data class PageSidecar(
+        val page: Int,
+        val width: Int,
+        val height: Int,
+        val blocks: List<PageTranslator.TranslatedBlock>,
+    )
+
+    private val json = Json { prettyPrint = true }
 
     companion object {
         private const val TAG = "ChapterTranslation"

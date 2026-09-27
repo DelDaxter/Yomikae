@@ -10,6 +10,7 @@ import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.serialization.Serializable
 import logcat.LogPriority
 import tachiyomi.core.common.util.system.logcat
 import java.io.ByteArrayOutputStream
@@ -30,6 +31,8 @@ import java.io.Closeable
 class PageTranslator(
     sourceLanguage: String,
     private val translator: TextTranslator,
+    /** False = read the text only (sidecars), do not paint any page. */
+    private val renderPages: Boolean = true,
 ) : Closeable {
 
     private val recognizer: TextRecognizer = when (sourceLanguage) {
@@ -45,21 +48,39 @@ class PageTranslator(
         translator.prepare()
     }
 
+    /** One text block of a page with its translation, in page pixel coordinates. */
+    @Serializable
+    data class TranslatedBlock(
+        val source: String,
+        val target: String,
+        val left: Int,
+        val top: Int,
+        val right: Int,
+        val bottom: Int,
+    )
+
+    /** What a page gave: the rendered image (null when nothing to translate) and the text pairs. */
+    class Result(val jpeg: ByteArray?, val width: Int, val height: Int, val blocks: List<TranslatedBlock>)
+
     /**
-     * Returns the translated page as JPEG bytes, or null when the page has no text worth
+     * Returns the translated page (JPEG bytes plus the source/target text pairs), or null when
+     * the page could not be decoded. The image is null when the page has no text worth
      * translating (the caller then keeps the original).
      */
-    suspend fun translatePage(imageBytes: ByteArray): ByteArray? {
+    suspend fun translatePage(imageBytes: ByteArray): Result? {
         val bitmap = decode(imageBytes) ?: return null
         try {
             // Drop watermarks and stray marks, then glue the pieces of one bubble back together:
             // ML Kit often splits a bubble into two blocks, which breaks both the context given
             // to the translator and the rendering (two text sizes in one bubble).
             val blocks = mergeBubbleBlocks(recognize(bitmap).filterNot { isNoise(it.text) })
-            if (blocks.isEmpty()) return null
+            if (blocks.isEmpty()) return Result(null, bitmap.width, bitmap.height, emptyList())
 
             // The whole page goes to the engine at once, so context-aware engines can use it.
             val texts = translator.translate(blocks.map { it.text })
+            val pairs = blocks.zip(texts) { block, text ->
+                TranslatedBlock(block.text, text, block.box.left, block.box.top, block.box.right, block.box.bottom)
+            }
             val translated = blocks.zip(texts) { block, text ->
                 PageRenderer.Block(
                     box = block.box,
@@ -67,14 +88,15 @@ class PageTranslator(
                     text = text,
                 )
             }.filter { it.text.isNotBlank() }
-            if (translated.isEmpty()) return null
+            if (translated.isEmpty() || !renderPages) return Result(null, bitmap.width, bitmap.height, pairs)
 
             val output = renderer.render(bitmap, translated)
-            return ByteArrayOutputStream().use { stream ->
+            val jpeg = ByteArrayOutputStream().use { stream ->
                 output.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
                 if (output !== bitmap) output.recycle()
                 stream.toByteArray()
             }
+            return Result(jpeg, bitmap.width, bitmap.height, pairs)
         } finally {
             bitmap.recycle()
         }
@@ -152,6 +174,7 @@ class PageTranslator(
         val t = text.trim()
         if (t.length < 2) return true
         if (URL_PATTERN.containsMatchIn(t)) return true
+        if (WATERMARK_WORDS.any { t.contains(it) }) return true
         return !t.any { it.isLetter() }
     }
 
@@ -200,5 +223,8 @@ class PageTranslator(
         const val MERGE_MAX_GAP_LINES = 0.8f
         const val MERGE_MIN_OVERLAP = 0.4f
         val URL_PATTERN = Regex("""(?i)(\.com|\.net|\.org|\.kr|\.io|www\.|http)""")
+
+        /** Site logos and "read it first on..." banners that scan sites stamp on pages. */
+        val WATERMARK_WORDS = listOf("뉴토끼", "구글검색", "웹툰미리보기", "웹튼미리보기", "짬툰", "마나토끼", "북토끼", "툰코", "Newtoki", "Toonkor")
     }
 }

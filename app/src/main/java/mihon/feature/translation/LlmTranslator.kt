@@ -88,8 +88,8 @@ class LlmTranslator(
                 "Please accurately translate the following text into ${languageName(targetLanguage)}, " +
                     "taking the provided background information into consideration. " +
                     "Each numbered line is one speech bubble; translate every line, keep exactly the same " +
-                    "number of lines and keep each line's prefix \"N| \" unchanged. " +
-                    "Only output the translated lines without any additional explanation.",
+                    "number of lines, and start each translated line with the same number and a vertical bar " +
+                    "(for example \"3| \"). Only output the translated lines without any additional explanation.",
             )
             appendLine()
             lines.forEachIndexed { i, line -> appendLine("${i + 1}| ${line.replace('\n', ' ')}") }
@@ -97,15 +97,23 @@ class LlmTranslator(
 
         val answer = complete(prompt)
         val byNumber = HashMap<Int, String>()
-        answer.lineSequence().forEach { raw ->
-            val match = LINE_PATTERN.matchEntire(raw.trim()) ?: return@forEach
-            val number = match.groupValues[1].toIntOrNull() ?: return@forEach
-            byNumber[number] = match.groupValues[2].trim().trim('`', '"')
+        val inOrder = ArrayList<String>()
+        answer.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
+            val match = LINE_PATTERN.matchEntire(raw)
+            if (match != null) {
+                val text = match.groupValues[2].trim().trim('`', '"')
+                match.groupValues[1].toIntOrNull()?.let { byNumber[it] = text }
+                inOrder += text
+            } else {
+                inOrder += raw.trim('`', '"')
+            }
         }
-        if (byNumber.size != lines.size) {
-            logcat(LogPriority.WARN) { "LLM answered ${byNumber.size} of ${lines.size} lines" }
+        if (byNumber.size == lines.size) {
+            return lines.indices.map { byNumber[it + 1]?.takeIf { text -> text.isNotBlank() } }
         }
-        return lines.indices.map { byNumber[it + 1]?.takeIf { text -> text.isNotBlank() } }
+        // The model dropped or mangled the numbers (it happens with long reference lists): trust the order.
+        logcat(LogPriority.WARN) { "LLM numbered ${byNumber.size} of ${lines.size} lines, using order" }
+        return lines.indices.map { inOrder.getOrNull(it)?.takeIf { text -> text.isNotBlank() } }
     }
 
     private suspend fun translateSingle(line: String): String {
@@ -153,7 +161,7 @@ class LlmTranslator(
     }
 
     private companion object {
-        val LINE_PATTERN = Regex("""^(\d+)\s*[|｜]\s*(.*)$""")
+        val LINE_PATTERN = Regex("""^([0-9N]+)\s*[|｜]\s*(.*)$""")
         const val DEFAULT_BACKGROUND =
             "These are the speech bubbles of one page of a Korean webtoon, in reading order. " +
                 "Use natural spoken English as in published comics. Keep character names consistent."
