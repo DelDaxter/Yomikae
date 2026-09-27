@@ -31,7 +31,7 @@ class TranslationPreferences(
     val engine: Preference<String> = preferenceStore.getString("translation_engine", TextTranslator.ENGINE_MLKIT)
 
     /** Which [mihon.feature.translation.ocr.OcrEngine] reads the pages: "mlkit" or "paddle". */
-    val ocrEngine: Preference<String> = preferenceStore.getString("translation_ocr_engine", OcrEngine.ENGINE_MLKIT)
+    val ocrEngine: Preference<String> = preferenceStore.getString("translation_ocr_engine", OcrEngine.ENGINE_PADDLE)
 
     /** OpenAI-compatible server for the LLM engine (llama-server on a PC, Ollama, ...). */
     val llmServerUrl: Preference<String> = preferenceStore.getString("translation_llm_url", "http://192.168.31.77:8080")

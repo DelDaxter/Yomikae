@@ -140,7 +140,14 @@ class PaddleOcr(
                     session.run(mapOf(session.inputNames.first() to tensor)).use { result ->
                         @Suppress("UNCHECKED_CAST")
                         val out = result.get(0).value as Array<Array<FloatArray>>
-                        return ctcDecode(out[0])
+                        val (text, confidence) = ctcDecode(out[0])
+                        // PaddleOCR's drop_score: a line the model is unsure about is usually
+                        // not text at all (sound effects drawn as art, texture, logos).
+                        if (confidence < REC_DROP_SCORE) {
+                            logcat(LogPriority.DEBUG) { "PaddleOCR dropped \"$text\" (confidence $confidence)" }
+                            return null
+                        }
+                        return text
                     }
                 }
             } finally {
@@ -173,10 +180,15 @@ class PaddleOcr(
         return out
     }
 
-    /** Greedy CTC: argmax per step, drop repeats and blanks (index 0); last index = space. */
-    private fun ctcDecode(logits: Array<FloatArray>): String {
+    /**
+     * Greedy CTC: argmax per step, drop repeats and blanks (index 0); last index = space.
+     * Returns the text and the mean probability of the kept characters (the model's softmax).
+     */
+    private fun ctcDecode(logits: Array<FloatArray>): Pair<String, Float> {
         val sb = StringBuilder()
         var prev = -1
+        var confidenceSum = 0f
+        var kept = 0
         for (step in logits) {
             var best = 0
             var bestVal = step[0]
@@ -192,10 +204,13 @@ class PaddleOcr(
                     k in keys.indices -> sb.append(keys[k])
                     k == keys.size -> sb.append(' ')
                 }
+                confidenceSum += bestVal
+                kept++
             }
             prev = best
         }
-        return sb.toString().trim()
+        val confidence = if (kept == 0) 0f else confidenceSum / kept
+        return sb.toString().trim() to confidence
     }
 
     // ---- tensors (BGR, CHW) ----
@@ -256,6 +271,9 @@ class PaddleOcr(
         private const val DET_BOX_THRESH = 0.6f
         private const val DET_UNCLIP = 1.6f
         private const val REC_HEIGHT = 48
+
+        /** PaddleOCR's default `drop_score`: lines read with a lower mean probability are ignored. */
+        private const val REC_DROP_SCORE = 0.5f
         private const val REC_MIN_WIDTH = 8
         private const val REC_BASE_WIDTH = 320
         private const val REC_MAX_WIDTH = 2048
