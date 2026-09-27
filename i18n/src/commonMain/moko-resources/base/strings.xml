@@ -1140,6 +1140,8 @@
     <string name="series_memory_examples">Examples given to the translator</string>
     <string name="series_memory_glossary">Glossary (one per line: source = translation)</string>
     <string name="series_memory_glossary_hint">이선웅 = Lee Seonwoong</string>
+    <string name="series_memory_offset">Chapter number offset of the reference</string>
+    <string name="series_memory_offset_hint">Reference chapter = this chapter + offset (e.g. -1 when the raw counts its prologue as 1)</string>
     <string name="series_memory_forget_lines">Forget remembered lines</string>
     <string name="series_memory_saved">Saved</string>
     <string name="series_memory_save">Save glossary</string>

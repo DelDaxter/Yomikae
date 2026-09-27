@@ -47,7 +47,7 @@ class SeriesMemoryBuilder(
         var aligned = 0
         var missingReference = 0
         for ((number, chapter) in sourceChapters) {
-            val reference = referenceChapters[number] ?: continue
+            val reference = referenceChapters[number + memory.referenceOffset] ?: continue
             val sourceDir = store.sidecarDir(chapter.id, sourceLanguage) ?: continue
             val referenceDir = store.chapterDir(reference.id, ChapterTranslationJob.extractVariant(targetLanguage))
             if (!referenceDir.isDirectory) {

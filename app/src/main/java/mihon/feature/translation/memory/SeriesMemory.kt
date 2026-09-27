@@ -29,6 +29,11 @@ data class SeriesMemory(
     val examples: List<TermPair> = emptyList(),
     val lines: Map<String, String> = emptyMap(),
     val alignedChapters: Int = 0,
+    /**
+     * Reference chapter number = source chapter number + offset. Naver numbers its prologue
+     * "000." (read as chapter 1) where the English edition has "Episode 0", so the offset is -1.
+     */
+    val referenceOffset: Double = 0.0,
     val updatedAt: Long = 0,
 ) {
     @Serializable

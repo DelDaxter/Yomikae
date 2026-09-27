@@ -66,6 +66,7 @@ class SeriesMemoryScreen(private val mangaId: Long) : Screen() {
         var memory by remember { mutableStateOf(memoryStore.load(mangaId)) }
         var referenceTitle by remember { mutableStateOf<String?>(null) }
         var glossaryText by remember { mutableStateOf(memoryStore.formatGlossary(memory.glossary)) }
+        var offsetText by remember { mutableStateOf(formatOffset(memory.referenceOffset)) }
         var favorites by remember { mutableStateOf<List<Manga>>(emptyList()) }
         var showPicker by remember { mutableStateOf(false) }
         var busy by remember { mutableStateOf(false) }
@@ -178,12 +179,26 @@ class SeriesMemoryScreen(private val mangaId: Long) : Screen() {
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(MaterialTheme.padding.small))
+                        OutlinedTextField(
+                            value = offsetText,
+                            onValueChange = { offsetText = it },
+                            label = { Text(stringResource(MR.strings.series_memory_offset)) },
+                            supportingText = { Text(stringResource(MR.strings.series_memory_offset_hint)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(MaterialTheme.padding.small))
                         Row {
                             Button(
                                 onClick = {
+                                    val offset = offsetText.trim().replace(',', '.').toDoubleOrNull() ?: 0.0
                                     memoryStore.update(mangaId) {
-                                        it.copy(glossary = memoryStore.parseGlossary(glossaryText))
+                                        it.copy(
+                                            glossary = memoryStore.parseGlossary(glossaryText),
+                                            referenceOffset = offset,
+                                        )
                                     }
+                                    offsetText = formatOffset(offset)
                                     reload()
                                     context.toast(MR.strings.series_memory_saved)
                                 },
@@ -318,3 +333,7 @@ class SeriesMemoryScreen(private val mangaId: Long) : Screen() {
         return todo.size
     }
 }
+
+/** "0", "-1", "1.5": whole numbers without a decimal part. */
+private fun formatOffset(offset: Double): String =
+    if (offset == offset.toLong().toDouble()) offset.toLong().toString() else offset.toString()
