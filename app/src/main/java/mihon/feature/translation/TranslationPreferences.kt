@@ -3,6 +3,7 @@ package mihon.feature.translation
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import mihon.feature.translation.ocr.OcrEngine
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 
@@ -28,6 +29,9 @@ class TranslationPreferences(
 
     /** Which [TextTranslator] does the translating: [TextTranslator.ENGINE_MLKIT] or [TextTranslator.ENGINE_LLM]. */
     val engine: Preference<String> = preferenceStore.getString("translation_engine", TextTranslator.ENGINE_MLKIT)
+
+    /** Which [mihon.feature.translation.ocr.OcrEngine] reads the pages: "mlkit" or "paddle". */
+    val ocrEngine: Preference<String> = preferenceStore.getString("translation_ocr_engine", OcrEngine.ENGINE_MLKIT)
 
     /** OpenAI-compatible server for the LLM engine (llama-server on a PC, Ollama, ...). */
     val llmServerUrl: Preference<String> = preferenceStore.getString("translation_llm_url", "http://192.168.31.77:8080")

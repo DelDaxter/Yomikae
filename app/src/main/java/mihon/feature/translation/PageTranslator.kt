@@ -3,15 +3,10 @@ package mihon.feature.translation
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.Text
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.TextRecognizer
-import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
-import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.serialization.Serializable
 import logcat.LogPriority
+import mihon.feature.translation.ocr.OcrBlock
+import mihon.feature.translation.ocr.OcrEngine
 import tachiyomi.core.common.util.system.logcat
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
@@ -29,22 +24,17 @@ import java.io.Closeable
  * One instance is meant to live for the duration of a job. Call [close] when done.
  */
 class PageTranslator(
-    sourceLanguage: String,
+    private val ocr: OcrEngine,
     private val translator: TextTranslator,
     /** False = read the text only (sidecars), do not paint any page. */
     private val renderPages: Boolean = true,
 ) : Closeable {
 
-    private val recognizer: TextRecognizer = when (sourceLanguage) {
-        "ko" -> TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build())
-        "ja" -> TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build())
-        else -> TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-    }
-
     private val renderer = PageRenderer()
 
-    /** Prepares the translation engine (model download, connection check). Call once. */
+    /** Prepares both engines (model downloads, sessions, connection check). Call once. */
     suspend fun prepare() {
+        ocr.prepare()
         translator.prepare()
     }
 
@@ -111,7 +101,7 @@ class PageTranslator(
     private suspend fun recognize(bitmap: Bitmap): List<OcrBlock> {
         logcat { "Translation: OCR on ${bitmap.width}x${bitmap.height}" }
         if (bitmap.height <= TILE_HEIGHT) {
-            return recognizer.process(InputImage.fromBitmap(bitmap, 0)).await().toOcrBlocks(0)
+            return ocr.recognize(bitmap)
         }
 
         val result = ArrayList<OcrBlock>()
@@ -120,7 +110,7 @@ class PageTranslator(
             val height = minOf(TILE_HEIGHT, bitmap.height - top)
             val tile = Bitmap.createBitmap(bitmap, 0, top, bitmap.width, height)
             val blocks = try {
-                recognizer.process(InputImage.fromBitmap(tile, 0)).await().toOcrBlocks(top)
+                ocr.recognize(tile).map { OcrBlock(it.text, Rect(it.box).apply { offset(0, top) }, it.lineCount) }
             } finally {
                 tile.recycle()
             }
@@ -162,12 +152,9 @@ class PageTranslator(
     }
 
     override fun close() {
-        recognizer.close()
+        ocr.close()
         translator.close()
     }
-
-    /** A text block in page coordinates: the text (lines joined), its box and its line count. */
-    private class OcrBlock(val text: String, val box: Rect, val lineCount: Int)
 
     /** Watermarks (site names), lone symbols and digits are not dialogue. */
     private fun isNoise(text: String): Boolean {
@@ -211,14 +198,6 @@ class PageTranslator(
         val overlap = minOf(a.box.right, b.box.right) - maxOf(a.box.left, b.box.left)
         val narrower = minOf(a.box.width(), b.box.width()).coerceAtLeast(1)
         return overlap.toFloat() / narrower >= MERGE_MIN_OVERLAP
-    }
-
-    /** Converts ML Kit's result into [OcrBlock]s, shifting boxes down by [dy] (the band's top). */
-    private fun Text.toOcrBlocks(dy: Int): List<OcrBlock> = textBlocks.mapNotNull { block ->
-        val box = block.boundingBox ?: return@mapNotNull null
-        val text = block.lines.joinToString(" ") { it.text }.trim()
-        if (text.isBlank()) return@mapNotNull null
-        OcrBlock(text, Rect(box).apply { offset(0, dy) }, block.lines.size.coerceAtLeast(1))
     }
 
     private companion object {

@@ -39,6 +39,9 @@ import mihon.core.metro.metroGraph
 import mihon.feature.translation.memory.SeriesMemory
 import mihon.feature.translation.memory.SeriesMemoryBuilder
 import mihon.feature.translation.memory.SeriesMemoryStore
+import mihon.feature.translation.ocr.MlKitOcr
+import mihon.feature.translation.ocr.OcrEngine
+import mihon.feature.translation.ocr.PaddleOcr
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.system.logcat
@@ -135,7 +138,7 @@ class ChapterTranslationJob(
             extractOnly -> IdentityTranslator()
             else -> createTextTranslator(sourceLanguage, targetLanguage, freshMemory)
         }
-        val translator = PageTranslator(ocrLanguage, textTranslator, renderPages = !extractOnly)
+        val translator = PageTranslator(createOcrEngine(ocrLanguage), textTranslator, renderPages = !extractOnly)
         var failures = 0
         try {
             translator.prepare()
@@ -180,6 +183,16 @@ class ChapterTranslationJob(
         }
 
         return if (failures == 0) Result.success() else Result.failure()
+    }
+
+    /** Picks the OCR engine from the settings; PaddleOCR only for the languages it covers. */
+    private fun createOcrEngine(language: String): OcrEngine {
+        val wanted = preferences.ocrEngine.get()
+        return if (wanted == OcrEngine.ENGINE_PADDLE && language in PaddleOcr.SUPPORTED_LANGUAGES) {
+            PaddleOcr(context, language)
+        } else {
+            MlKitOcr(language)
+        }
     }
 
     /** Picks the translation engine from the settings, fed with the series memory. */

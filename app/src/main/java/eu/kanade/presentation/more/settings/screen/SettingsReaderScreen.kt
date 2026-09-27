@@ -14,6 +14,7 @@ import eu.kanade.tachiyomi.util.system.hasDisplayCutout
 import mihon.app.di.appGraph
 import mihon.feature.translation.TextTranslator
 import mihon.feature.translation.TranslationPreferences
+import mihon.feature.translation.ocr.OcrEngine
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
@@ -450,6 +451,14 @@ object SettingsReaderScreen : SearchableSettings {
                     preference = translationPreferences.showTranslated,
                     title = stringResource(MR.strings.pref_translation_show),
                     subtitle = stringResource(MR.strings.pref_translation_show_summary),
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = translationPreferences.ocrEngine,
+                    entries = mapOf(
+                        OcrEngine.ENGINE_MLKIT to stringResource(MR.strings.translation_ocr_mlkit),
+                        OcrEngine.ENGINE_PADDLE to stringResource(MR.strings.translation_ocr_paddle),
+                    ),
+                    title = stringResource(MR.strings.pref_translation_ocr_engine),
                 ),
                 Preference.PreferenceItem.ListPreference(
                     preference = translationPreferences.engine,

@@ -5,6 +5,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
+import mihon.feature.translation.ocr.OcrEngine
 import java.io.File
 import java.io.InputStream
 
@@ -34,7 +35,9 @@ class TranslationStore(
     fun currentVariant(): String {
         val base = "${preferences.sourceLanguage.get()}-${preferences.targetLanguage.get()}"
         val engine = preferences.engine.get()
-        return if (engine == TextTranslator.ENGINE_MLKIT) base else "$base-$engine"
+        val ocr = preferences.ocrEngine.get()
+        val withEngine = if (engine == TextTranslator.ENGINE_MLKIT) base else "$base-$engine"
+        return if (ocr == OcrEngine.ENGINE_MLKIT) withEngine else "$withEngine-$ocr"
     }
 
     fun chapterDir(chapterId: Long, variant: String): File = File(root, "$chapterId/$variant")

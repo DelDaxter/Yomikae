@@ -1114,6 +1114,9 @@
     <string name="pref_translation_info">Translation runs on this device with Google ML Kit. Download a chapter, then choose Translate from its menu. Translation models (about 30 MB per language) are downloaded on first use.</string>
     <string name="translation_notifier_title">Translating</string>
     <string name="pref_translation_engine">Translation engine</string>
+    <string name="pref_translation_ocr_engine">Text reading (OCR)</string>
+    <string name="translation_ocr_mlkit">Google ML Kit (bundled, fast)</string>
+    <string name="translation_ocr_paddle">PaddleOCR v5 Korean (downloads 18 MB, more accurate)</string>
     <string name="action_series_memory">Series memory</string>
     <string name="series_memory_title">Series memory</string>
     <string name="series_memory_reference">Reference edition (already translated)</string>

@@ -303,6 +303,8 @@ dependencies {
     implementation(libs.mlkit.text.recognition.korean)
     implementation(libs.mlkit.text.recognition.japanese)
     implementation(libs.mlkit.translate)
+    // Yomikae: ONNX Runtime for PaddleOCR (and later models)
+    implementation(libs.onnxruntime.android)
     implementation(libs.flexibleAdapter)
     implementation(libs.photoView)
     implementation(libs.directionalViewPager) {

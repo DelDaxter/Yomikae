@@ -906,6 +906,9 @@
     <string name="pref_translation_info">La traduction se fait sur cet appareil avec Google ML Kit. Téléchargez un chapitre, puis choisissez Traduire dans son menu. Les modèles de traduction (environ 30 Mo par langue) sont téléchargés à la première utilisation.</string>
     <string name="translation_notifier_title">Traduction en cours</string>
     <string name="pref_translation_engine">Moteur de traduction</string>
+    <string name="pref_translation_ocr_engine">Lecture du texte (OCR)</string>
+    <string name="translation_ocr_mlkit">Google ML Kit (intégré, rapide)</string>
+    <string name="translation_ocr_paddle">PaddleOCR v5 coréen (télécharge 18 Mo, plus précis)</string>
     <string name="action_series_memory">Mémoire de série</string>
     <string name="series_memory_title">Mémoire de série</string>
     <string name="series_memory_reference">Édition de référence (déjà traduite)</string>
