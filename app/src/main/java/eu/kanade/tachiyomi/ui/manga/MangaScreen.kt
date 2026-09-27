@@ -124,7 +124,8 @@ class MangaScreen(
             },
             onSeriesMemoryClicked = { navigator.push(SeriesMemoryScreen(successState.manga.id)) },
             onAutoTranslateClicked = viewModel::showAutoTranslateDialog,
-            onMergeClicked = viewModel::showMergeDialog,
+            // Only an entry of the library can be the primary of a unified entry.
+            onMergeClicked = viewModel::showMergeDialog.takeIf { successState.manga.favorite },
             onAddToLibraryClicked = {
                 viewModel.toggleFavorite()
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)

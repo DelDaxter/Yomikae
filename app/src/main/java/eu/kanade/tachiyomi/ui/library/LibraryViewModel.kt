@@ -440,9 +440,12 @@ class LibraryViewModel(
             groupStore.groups,
         ) { libraryManga, preferences, _, groups ->
             // Yomikae: entries merged into a unified entry stay out of the library grid.
-            val hidden = groupStore.memberIds(groups)
-            val unified = groups.associate { it.primaryMangaId to it.memberIds.size + 1 }
-            val displayTitles = unifiedDisplayTitles(groups, libraryManga.map { it.manga })
+            // A group whose primary is not (or no longer) in the library hides nothing.
+            val favoriteIds = libraryManga.map { it.manga.id }.toSet()
+            val activeGroups = groups.filter { it.primaryMangaId in favoriteIds }
+            val hidden = groupStore.memberIds(activeGroups)
+            val unified = activeGroups.associate { it.primaryMangaId to it.memberIds.size + 1 }
+            val displayTitles = unifiedDisplayTitles(activeGroups, libraryManga.map { it.manga })
             libraryManga.filterNot { it.manga.id in hidden }.map { manga ->
                 LibraryItem(
                     libraryManga = manga,
