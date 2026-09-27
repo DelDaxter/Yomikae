@@ -12,9 +12,6 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.util.system.hasDisplayCutout
 import mihon.app.di.appGraph
-import mihon.feature.translation.TextTranslator
-import mihon.feature.translation.TranslationPreferences
-import mihon.feature.translation.ocr.OcrEngine
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
@@ -31,7 +28,6 @@ object SettingsReaderScreen : SearchableSettings {
     override fun getPreferences(): List<Preference> {
         val context = LocalContext.current
         val readerPref = remember { context.appGraph.readerPreferences }
-        val translationPref = remember { context.appGraph.translationPreferences }
 
         return listOf(
             Preference.PreferenceItem.ListPreference(
@@ -70,7 +66,6 @@ object SettingsReaderScreen : SearchableSettings {
             getWebtoonGroup(readerPreferences = readerPref),
             getNavigationGroup(readerPreferences = readerPref),
             getActionsGroup(readerPreferences = readerPref),
-            getTranslationGroup(translationPref),
         )
     }
 
@@ -423,65 +418,6 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_vertical_navigator_height),
                     onValueChanged = { verticalNavigatorHeightPref.set(it) },
                     enabled = verticalNavigator.isNotEmpty(),
-                ),
-            ),
-        )
-    }
-
-    // Yomikae
-    @Composable
-    private fun getTranslationGroup(translationPreferences: TranslationPreferences): Preference.PreferenceGroup {
-        val languageName: (
-            String,
-        ) -> String = { code -> java.util.Locale(code).getDisplayLanguage(java.util.Locale.getDefault()) }
-        return Preference.PreferenceGroup(
-            title = stringResource(MR.strings.pref_category_translation),
-            preferenceItems = listOf(
-                Preference.PreferenceItem.ListPreference(
-                    preference = translationPreferences.sourceLanguage,
-                    entries = TranslationPreferences.SOURCE_LANGUAGES.associateWith(languageName),
-                    title = stringResource(MR.strings.pref_translation_source_language),
-                ),
-                Preference.PreferenceItem.ListPreference(
-                    preference = translationPreferences.targetLanguage,
-                    entries = TranslationPreferences.TARGET_LANGUAGES.associateWith(languageName),
-                    title = stringResource(MR.strings.pref_translation_target_language),
-                ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = translationPreferences.showTranslated,
-                    title = stringResource(MR.strings.pref_translation_show),
-                    subtitle = stringResource(MR.strings.pref_translation_show_summary),
-                ),
-                Preference.PreferenceItem.ListPreference(
-                    preference = translationPreferences.ocrEngine,
-                    entries = mapOf(
-                        OcrEngine.ENGINE_MLKIT to stringResource(MR.strings.translation_ocr_mlkit),
-                        OcrEngine.ENGINE_PADDLE to stringResource(MR.strings.translation_ocr_paddle),
-                    ),
-                    title = stringResource(MR.strings.pref_translation_ocr_engine),
-                ),
-                Preference.PreferenceItem.ListPreference(
-                    preference = translationPreferences.engine,
-                    entries = mapOf(
-                        TextTranslator.ENGINE_MLKIT to stringResource(MR.strings.translation_engine_mlkit),
-                        TextTranslator.ENGINE_LLM to stringResource(MR.strings.translation_engine_llm),
-                    ),
-                    title = stringResource(MR.strings.pref_translation_engine),
-                ),
-                Preference.PreferenceItem.EditTextPreference(
-                    preference = translationPreferences.llmServerUrl,
-                    title = stringResource(MR.strings.pref_translation_llm_url),
-                ),
-                Preference.PreferenceItem.EditTextPreference(
-                    preference = translationPreferences.llmModel,
-                    title = stringResource(MR.strings.pref_translation_llm_model),
-                ),
-                Preference.PreferenceItem.EditTextPreference(
-                    preference = translationPreferences.llmBackground,
-                    title = stringResource(MR.strings.pref_translation_llm_background),
-                ),
-                Preference.PreferenceItem.InfoPreference(
-                    title = stringResource(MR.strings.pref_translation_info),
                 ),
             ),
         )

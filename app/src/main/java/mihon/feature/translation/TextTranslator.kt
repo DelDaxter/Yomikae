@@ -19,6 +19,11 @@ interface TextTranslator : Closeable {
 
     companion object {
         const val ENGINE_MLKIT = "mlkit"
+
+        /** LLM served over the network (llama-server on a PC, hosted API). */
         const val ENGINE_LLM = "llm"
+
+        /** LLM embedded in the app (LiteRT-LM): the target of the project. */
+        const val ENGINE_LOCAL = "local"
     }
 }

@@ -305,6 +305,8 @@ dependencies {
     implementation(libs.mlkit.translate)
     // Yomikae: ONNX Runtime for PaddleOCR (and later models)
     implementation(libs.onnxruntime.android)
+    // Yomikae: LiteRT-LM runs the embedded translation model (Hy-MT2 1.8B)
+    implementation(libs.litertlm.android)
     implementation(libs.flexibleAdapter)
     implementation(libs.photoView)
     implementation(libs.directionalViewPager) {
