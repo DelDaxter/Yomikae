@@ -512,10 +512,15 @@ class MangaViewModel(
         translationPreferences.setAutoTranslateMode(mangaId, mode)
     }
 
-    /** Yomikae: the languages offered are the translation languages plus those of the entry's editions. */
+    /**
+     * Yomikae: only the languages actually available are offered: those of the editions in the
+     * entry, plus the translation language when a raw can be translated on the phone.
+     */
     fun showReadingLanguageDialog() {
         val manga = successState?.manga ?: return
-        val options = (TranslationPreferences.TARGET_LANGUAGES + entryLanguages).distinct()
+        val target = translationPreferences.targetLanguage.get()
+        val hasRaw = translationPreferences.sourceLanguage.get() in entryLanguages
+        val options = (listOfNotNull(target.takeIf { hasRaw }) + entryLanguages).distinct()
         updateSuccessState {
             it.copy(dialog = Dialog.ReadingLanguage(manga, translationPreferences.readingLanguage(manga.id), options))
         }
