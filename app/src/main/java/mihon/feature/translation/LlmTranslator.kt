@@ -79,22 +79,35 @@ class LlmTranslator(
 
         val answer = backend.complete(prompt)
         val byNumber = HashMap<Int, String>()
-        val inOrder = ArrayList<String>()
+        val numbered = ArrayList<String>()
+        val plain = ArrayList<String>()
         answer.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.forEach { raw ->
-            val match = LINE_PATTERN.matchEntire(raw) ?: return@forEach
-            val text = match.groupValues[2].trim().trim('`', '"')
-            match.groupValues[1].toIntOrNull()?.let { byNumber[it] = text }
-            inOrder += text
+            val match = LINE_PATTERN.matchEntire(raw)
+            if (match != null) {
+                val text = match.groupValues[2].trim().trim('`', '"')
+                match.groupValues[1].toIntOrNull()?.let { byNumber[it] = text }
+                numbered += text
+            }
+            plain += (match?.groupValues?.get(2) ?: raw).trim().trim('`', '"')
         }
-        if (byNumber.size == lines.size) {
-            return lines.indices.map { byNumber[it + 1]?.takeIf { text -> text.isNotBlank() } }
+        val ordered = when {
+            byNumber.size == lines.size -> return lines.indices.map { byNumber[it + 1]?.takeIf { t -> t.isNotBlank() } }
+            // The model kept the prefixes on some lines only: a preamble or a stray sentence is
+            // ignored, the numbered lines are taken in order.
+            numbered.size == lines.size -> numbered
+            // No prefix at all (the small model often drops them on one or two lines): the answer
+            // has as many lines as the question, trust the order.
+            byNumber.isEmpty() && plain.size == lines.size -> plain
+            else -> {
+                logcat(LogPriority.WARN) {
+                    "LLM answered ${plain.size} lines (${byNumber.size} numbered) for ${lines.size}: ${answer.take(
+                        200,
+                    )}"
+                }
+                return lines.indices.map { byNumber[it + 1]?.takeIf { t -> t.isNotBlank() } }
+            }
         }
-        // The model mangled some numbers (it happens with long reference lists): trust the order
-        // of the lines that do carry a prefix; a preamble or a stray sentence is ignored, and any
-        // line left without an answer is translated on its own afterwards.
-        logcat(LogPriority.WARN) { "LLM numbered ${byNumber.size} of ${lines.size} lines, using order" }
-        if (inOrder.size != lines.size) return lines.indices.map { byNumber[it + 1]?.takeIf { t -> t.isNotBlank() } }
-        return lines.indices.map { inOrder[it].takeIf { text -> text.isNotBlank() } }
+        return ordered.map { it.takeIf { text -> text.isNotBlank() } }
     }
 
     private suspend fun translateSingle(line: String): String {

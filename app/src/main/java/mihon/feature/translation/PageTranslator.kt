@@ -190,9 +190,13 @@ class PageTranslator(
         val gluedToEdge = block.box.right > pageWidth * 0.93f || block.box.left < pageWidth * 0.07f
         val outerBand = cy < 0.15f || cy > 0.85f
         if (gluedToEdge && outerBand) return true
-        val nearEdge = block.box.right > pageWidth * 0.85f || block.box.left < pageWidth * 0.15f
-        val widerBand = cy < 0.25f || cy > 0.75f
-        return nearEdge && widerBand && WATERMARK_WORDS.any { jamoSimilarity(t, it) >= 0.5f }
+        // Pages cut into squares put the stamp anywhere in the lower half, so for a text that
+        // sounds like a site name or ends with a latin fragment ("찜dom", "gom", "잠둔com") the
+        // right edge alone is enough. Left edge excluded: that is where cut bubbles end up.
+        val nearRightEdge = block.box.right > pageWidth * 0.9f
+        val soundsLikeSite = WATERMARK_WORDS.any { jamoSimilarity(t, it) >= 0.5f }
+        val latinTail = LATIN_TAIL.containsMatchIn(t) && hasSourceScript(t)
+        return nearRightEdge && (soundsLikeSite || latinTail)
     }
 
     /**
@@ -260,7 +264,10 @@ class PageTranslator(
         const val JPEG_QUALITY = 90
         const val MERGE_MAX_GAP_LINES = 0.8f
         const val MERGE_MIN_OVERLAP = 0.4f
-        val URL_PATTERN = Regex("""(?i)([.,]\s*c[o0][mnr]{1,2}|\.net|\.org|\.kr|\.io|www\.|http)""")
+        val URL_PATTERN = Regex("""(?i)([.,·．]\s*c[o0][mnr]{1,2}\b|\.net|\.org|\.kr|\.io|www\.|http)""")
+
+        /** A short latin fragment glued to Hangul: the end of a ".com" that the OCR half read. */
+        val LATIN_TAIL = Regex("""[A-Za-z]{2,3}$""")
 
         /** Site logos and "read it first on..." banners that scan sites stamp on pages. */
         val WATERMARK_WORDS = listOf(

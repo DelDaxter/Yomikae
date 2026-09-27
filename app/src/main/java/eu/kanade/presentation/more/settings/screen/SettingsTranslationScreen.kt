@@ -125,11 +125,12 @@ object SettingsTranslationScreen : SearchableSettings {
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_translation_group_local),
             preferenceItems = listOf(
+                // Always visible (Mihon hides disabled items): the row shows the model's state.
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.translation_model_name),
                     subtitle = subtitle,
-                    enabled = !busy && !status.ready,
-                    onClick = {
+                    onClick = click@{
+                        if (busy || status.ready) return@click
                         busy = true
                         error = null
                         scope.launch {
@@ -157,6 +158,7 @@ object SettingsTranslationScreen : SearchableSettings {
                     title = stringResource(MR.strings.translation_model_delete),
                     enabled = !busy && status.percent > 0,
                     onClick = {
+                        // Not while a job may be using it: the engine keeps the file mapped.
                         downloader.delete(LocalLlmBackend.GROUP, specs)
                         status = ModelStatus.read(downloader, specs)
                     },
