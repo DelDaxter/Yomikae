@@ -166,7 +166,7 @@ class PageTranslator(
         if (t.length < 2) return true
         if (URL_PATTERN.containsMatchIn(t)) return true
         if (WATERMARK_WORDS.any { t.contains(it) }) return true
-        if (t.length <= 8 && WATERMARK_WORDS.any { jamoSimilarity(t, it) >= 0.5f }) return true
+        if (t.length <= 8 && WATERMARK_WORDS.any { jamoSimilarity(t, it) >= 0.6f }) return true
         if (!t.any { it.isLetter() }) return true
         // A Korean page never yields a block without Hangul; such a block is a misread of
         // artwork, a logo, or a page that is not in the source language at all.
@@ -174,16 +174,22 @@ class PageTranslator(
     }
 
     /**
-     * Site stamps sit in a corner of the page and are short. Dialogue never is that small
-     * and that far in a corner at the same time.
+     * Site stamps are short, glued to the left or right edge of the page and near its top or
+     * bottom (measured on webtoon pages: right edge at 97-99 % of the width, width about 20 %).
+     * Dialogue in a bottom corner keeps a margin from the edge, so the edge test is what
+     * separates the two, not the centre of the box. A looser test applies when the text also
+     * sounds like a known site name ("짬툰" read "잡둔").
      */
     private fun isCornerStamp(block: OcrBlock, pageWidth: Int, pageHeight: Int): Boolean {
-        if (block.text.trim().length > 8) return false
+        val t = block.text.trim()
+        if (t.length > 8 || block.box.width() >= pageWidth * 0.3f) return false
         val cy = block.box.centerY().toFloat() / pageHeight
-        val cx = block.box.centerX().toFloat() / pageWidth
-        val nearTopOrBottom = cy < 0.12f || cy > 0.88f
-        val nearSide = cx < 0.25f || cx > 0.75f
-        return nearTopOrBottom && nearSide && block.box.width() < pageWidth * 0.3f
+        val gluedToEdge = block.box.right > pageWidth * 0.93f || block.box.left < pageWidth * 0.07f
+        val outerBand = cy < 0.15f || cy > 0.85f
+        if (gluedToEdge && outerBand) return true
+        val nearEdge = block.box.right > pageWidth * 0.85f || block.box.left < pageWidth * 0.15f
+        val widerBand = cy < 0.25f || cy > 0.75f
+        return nearEdge && widerBand && WATERMARK_WORDS.any { jamoSimilarity(t, it) >= 0.5f }
     }
 
     /**
