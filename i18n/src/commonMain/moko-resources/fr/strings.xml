@@ -915,6 +915,8 @@
     <string name="merge_dialog_title">Fiche unifiée</string>
     <string name="merge_dialog_hint">Coche les fiches de la bibliothèque qui sont la même œuvre (autres sources, autres langues). Elles quittent la grille de la bibliothèque et leurs chapitres apparaissent ici, dans la langue de lecture quand elle existe.</string>
     <string name="merge_translated_label">traduit</string>
+    <string name="merge_show_original_synopsis">Afficher le synopsis original</string>
+    <string name="merge_show_translated_synopsis">Afficher le synopsis traduit</string>
     <string name="auto_translate_title">Traduire les nouveaux téléchargements de cette série</string>
     <string name="auto_translate_default">Suivre le réglage global (%1$s)</string>
     <string name="auto_translate_on">Toujours</string>

@@ -1123,6 +1123,8 @@
     <string name="merge_dialog_title">Unified entry</string>
     <string name="merge_dialog_hint">Tick the library entries that are the same work (other sources, other languages). They leave the library grid and their chapters appear here, in the reading language when it exists.</string>
     <string name="merge_translated_label">translated</string>
+    <string name="merge_show_original_synopsis">Show the original synopsis</string>
+    <string name="merge_show_translated_synopsis">Show the translated synopsis</string>
     <string name="auto_translate_title">Translate new downloads of this series</string>
     <string name="auto_translate_default">Follow the global setting (%1$s)</string>
     <string name="auto_translate_on">Always</string>

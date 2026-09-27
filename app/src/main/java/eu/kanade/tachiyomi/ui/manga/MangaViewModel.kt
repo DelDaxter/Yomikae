@@ -228,12 +228,18 @@ class MangaViewModel(
                     val items = mergedChapterItems(manga, chapters, members)
                     val displayTitle = groupDisplayTitle
                     val alternativeTitle = groupAlternativeTitle
+                    val displayDescription = groupDisplayDescription
+                    val alternativeDescription = groupAlternativeDescription
+                    val displayGenre = groupDisplayGenre
                     updateSuccessState {
                         it.copy(
                             manga = manga,
                             chapters = items,
                             displayTitle = displayTitle,
                             alternativeTitle = alternativeTitle,
+                            displayDescription = displayDescription,
+                            alternativeDescription = alternativeDescription,
+                            displayGenre = displayGenre,
                         )
                     }
                 }
@@ -627,6 +633,9 @@ class MangaViewModel(
      */
     private var groupDisplayTitle: String? = null
     private var groupAlternativeTitle: String? = null
+    private var groupDisplayDescription: String? = null
+    private var groupAlternativeDescription: String? = null
+    private var groupDisplayGenre: List<String>? = null
 
     private suspend fun mergedChapterItems(
         manga: Manga,
@@ -637,6 +646,9 @@ class MangaViewModel(
             groupMangas = emptyMap()
             groupDisplayTitle = null
             groupAlternativeTitle = null
+            groupDisplayDescription = null
+            groupAlternativeDescription = null
+            groupDisplayGenre = null
             return chapters.toChapterListItems(manga)
         }
         val mangas = (members.map { it.first } + manga).associateBy { it.id }
@@ -660,16 +672,21 @@ class MangaViewModel(
         val target = translationPreferences.targetLanguage.get()
         val primaryLanguage = infos[manga.id]?.language
         val wantedLanguage = if (primaryLanguage == target) rawLanguage else target
-        val other = mangas.values
-            .firstOrNull { it.id != manga.id && infos[it.id]?.language == wantedLanguage }
-            ?.title
-            ?.takeIf { it.isNotBlank() && !it.equals(manga.title, ignoreCase = true) }
+        val otherEntry = mangas.values.firstOrNull { it.id != manga.id && infos[it.id]?.language == wantedLanguage }
+        val other = otherEntry?.title?.takeIf { it.isNotBlank() && !it.equals(manga.title, ignoreCase = true) }
+        val otherDescription = otherEntry?.description?.takeIf { it.isNotBlank() && it != manga.description }
         if (primaryLanguage == target) {
             groupDisplayTitle = null
             groupAlternativeTitle = other
+            groupDisplayDescription = null
+            groupAlternativeDescription = otherDescription
+            groupDisplayGenre = null
         } else {
             groupDisplayTitle = other
             groupAlternativeTitle = other?.let { manga.title }
+            groupDisplayDescription = otherDescription
+            groupAlternativeDescription = otherDescription?.let { manga.description }
+            groupDisplayGenre = otherEntry?.genre?.takeIf { it.isNotEmpty() }
         }
         val rows = MergedChapters.merge(
             chaptersByManga = members.associate { it.first.id to it.second } + (manga.id to chapters),
@@ -1405,8 +1422,15 @@ class MangaViewModel(
 
             /** Yomikae: unified entry, the other edition's title, shown under the main one. */
             val alternativeTitle: String? = null,
+
+            /** Yomikae: unified entry, synopsis and tags in the reading language, and the other synopsis. */
+            val displayDescription: String? = null,
+            val alternativeDescription: String? = null,
+            val displayGenre: List<String>? = null,
         ) : State {
             val title: String get() = displayTitle ?: manga.title
+            val description: String? get() = displayDescription ?: manga.description
+            val genre: List<String>? get() = displayGenre ?: manga.genre
             val processedChapters by lazy {
                 chapters.applyFilters(manga).toList()
             }

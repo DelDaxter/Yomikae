@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -264,13 +265,17 @@ fun ExpandableMangaDescription(
     onCopyTagToClipboard: (tag: String) -> Unit,
     onEditNotes: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Yomikae: unified entry, the other edition's synopsis, shown on demand. */
+    alternativeDescription: String? = null,
 ) {
     Column(modifier = modifier) {
         val (expanded, onExpanded) = rememberSaveable {
             mutableStateOf(defaultExpandState)
         }
+        var showAlternative by rememberSaveable { mutableStateOf(false) }
+        val shown = if (showAlternative && alternativeDescription != null) alternativeDescription else description
         val desc =
-            description.takeIf { !it.isNullOrBlank() } ?: stringResource(MR.strings.description_placeholder)
+            shown.takeIf { !it.isNullOrBlank() } ?: stringResource(MR.strings.description_placeholder)
 
         MangaSummary(
             description = desc,
@@ -282,6 +287,19 @@ fun ExpandableMangaDescription(
                 .padding(horizontal = 16.dp)
                 .clickableNoIndication { onExpanded(!expanded) },
         )
+        if (alternativeDescription != null) {
+            TextButton(
+                onClick = { showAlternative = !showAlternative },
+                modifier = Modifier.padding(horizontal = 8.dp),
+            ) {
+                val label = if (showAlternative) {
+                    MR.strings.merge_show_translated_synopsis
+                } else {
+                    MR.strings.merge_show_original_synopsis
+                }
+                Text(stringResource(label))
+            }
+        }
         val tags = tagsProvider()
         if (!tags.isNullOrEmpty()) {
             Box(
