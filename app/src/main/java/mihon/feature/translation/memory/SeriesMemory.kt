@@ -125,16 +125,21 @@ class SeriesMemoryStore(
     }
 
     /** Parses "source = target" lines typed by the user into glossary pairs. */
-    fun parseGlossary(text: String): List<SeriesMemory.TermPair> = text.lineSequence()
-        .map { it.trim() }
-        .filter { it.isNotEmpty() && ('=' in it || '→' in it) }
-        .mapNotNull { line ->
-            val sep = if ('→' in line) '→' else '='
-            val source = line.substringBefore(sep).trim()
-            val target = line.substringAfter(sep).trim()
-            if (source.isEmpty() || target.isEmpty()) null else SeriesMemory.TermPair(source, target)
-        }
-        .toList()
+    fun parseGlossary(text: String): List<SeriesMemory.TermPair> = parseGlossaryText(text)
+
+    companion object {
+        /** "source = target" per line; "→" works too; lines starting with "#" are comments. */
+        fun parseGlossaryText(text: String): List<SeriesMemory.TermPair> = text.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("#") && ('=' in it || '→' in it) }
+            .mapNotNull { line ->
+                val sep = if ('→' in line) '→' else '='
+                val source = line.substringBefore(sep).trim()
+                val target = line.substringAfter(sep).trim()
+                if (source.isEmpty() || target.isEmpty()) null else SeriesMemory.TermPair(source, target)
+            }
+            .toList()
+    }
 
     fun formatGlossary(pairs: List<SeriesMemory.TermPair>): String =
         pairs.joinToString("\n") { "${it.source} = ${it.target}" }

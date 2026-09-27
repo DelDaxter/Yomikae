@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +41,7 @@ import mihon.feature.translation.ChapterTranslationJob
 import mihon.feature.translation.TranslationStore
 import mihon.icons.materialsymbols.MaterialSymbols
 import mihon.icons.materialsymbols.rounded.Translate
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
@@ -138,6 +140,15 @@ class SeriesMemoryScreen(private val mangaId: Long) : Screen() {
                                     }
                                     busy = false
                                     reload()
+                                    report.offsetDetected?.let { detected ->
+                                        offsetText = formatOffset(detected)
+                                        context.toast(
+                                            context.stringResource(
+                                                MR.strings.series_memory_offset_detected,
+                                                formatOffset(detected),
+                                            ),
+                                        )
+                                    }
                                     if (report.chaptersAligned == 0 && report.chaptersWithoutReferenceText > 0) {
                                         context.toast(MR.strings.series_memory_no_reference_text)
                                     }
@@ -179,14 +190,48 @@ class SeriesMemoryScreen(private val mangaId: Long) : Screen() {
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(modifier = Modifier.height(MaterialTheme.padding.small))
-                        OutlinedTextField(
-                            value = offsetText,
-                            onValueChange = { offsetText = it },
-                            label = { Text(stringResource(MR.strings.series_memory_offset)) },
-                            supportingText = { Text(stringResource(MR.strings.series_memory_offset_hint)) },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            OutlinedTextField(
+                                value = offsetText,
+                                onValueChange = { offsetText = it },
+                                label = { Text(stringResource(MR.strings.series_memory_offset)) },
+                                supportingText = { Text(stringResource(MR.strings.series_memory_offset_hint)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(modifier = Modifier.width(MaterialTheme.padding.small))
+                            OutlinedButton(
+                                enabled = memory.referenceMangaId != null && !busy,
+                                onClick = {
+                                    busy = true
+                                    scope.launch {
+                                        val prefs = graph.translationPreferences
+                                        // Force a fresh search even when an offset is already set.
+                                        memoryStore.update(mangaId) { it.copy(referenceOffset = 0.0) }
+                                        val detected = withIOContext {
+                                            graph.seriesMemoryBuilder.detectOffset(
+                                                mangaId,
+                                                prefs.sourceLanguage.get(),
+                                                prefs.targetLanguage.get(),
+                                            )
+                                        }
+                                        busy = false
+                                        reload()
+                                        offsetText = formatOffset(detected ?: 0.0)
+                                        if (detected != null) {
+                                            context.toast(
+                                                context.stringResource(
+                                                    MR.strings.series_memory_offset_detected,
+                                                    formatOffset(detected),
+                                                ),
+                                            )
+                                        } else {
+                                            context.toast(MR.strings.series_memory_offset_not_detected)
+                                        }
+                                    }
+                                },
+                            ) { Text(stringResource(MR.strings.series_memory_detect_offset)) }
+                        }
                         Spacer(modifier = Modifier.height(MaterialTheme.padding.small))
                         Row {
                             Button(

@@ -1125,6 +1125,17 @@
     <string name="merge_translated_label">translated</string>
     <string name="merge_show_original_synopsis">Show the original synopsis</string>
     <string name="merge_show_translated_synopsis">Show the translated synopsis</string>
+    <string name="pref_translation_global_glossary">Global glossary</string>
+    <string name="pref_translation_global_glossary_summary">Genre terms, ranks, forms of address, shared by every series</string>
+    <string name="pref_translation_honorifics">Keep Korean forms of address</string>
+    <string name="pref_translation_honorifics_summary">hyung, noona, oppa, -nim… as in fan translations; off = English titles as in official editions</string>
+    <string name="global_glossary_title">Global glossary</string>
+    <string name="global_glossary_info">One entry per line: source = translation. Lines starting with # are comments. Only the entries that appear on a page are given to the model, so the list can be long. A series glossary has priority over this one.</string>
+    <string name="global_glossary_count">%1$d entries</string>
+    <string name="global_glossary_reset">Restore the default list</string>
+    <string name="series_memory_detect_offset">Detect</string>
+    <string name="series_memory_offset_detected">Chapter offset found: %1$s</string>
+    <string name="series_memory_offset_not_detected">No offset found: the numbers already match, or too few chapters are translated and extracted on both sides</string>
     <string name="auto_translate_title">Translate new downloads of this series</string>
     <string name="auto_translate_default">Follow the global setting (%1$s)</string>
     <string name="auto_translate_on">Always</string>

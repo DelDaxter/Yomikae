@@ -1,81 +1,98 @@
 <div align="center">
 
+<img src=".github/assets/logo.png" width="128" alt="Yomikae">
+
 # Yomikae
 
-### Lecteur de manga avec traduction automatique des pages, sur l'appareil
+### Lis tes webtoons coréens en anglais, traduits sur ton téléphone
 
-Fork de [Mihon](https://github.com/mihonapp/mihon) qui ajoute la traduction automatique des pages
-(coréen et japonais vers anglais et français), avec un système de plugins pour brancher
-ses propres moteurs d'OCR, de traduction ou d'effacement.
+Fork de [Mihon](https://github.com/mihonapp/mihon) (lecteur de manga Android) qui traduit les pages
+automatiquement, **sans serveur ni compte** : lecture du texte, traduction et réécriture dans les bulles
+se font sur l'appareil.
 
 [![License: Apache-2.0](https://img.shields.io/github/license/DelDaxter/Yomikae?labelColor=27303D&color=0877d2)](/LICENSE)
 
 </div>
 
-## Statut
+## Ce que fait Yomikae
 
-Projet en cours de démarrage (septembre 2026). Pour l'instant, Yomikae est Mihon renommé : la traduction arrive
-par paliers, décrits dans la feuille de route ci-dessous.
+- **Traduit les chapitres téléchargés** (coréen → anglais aujourd'hui, japonais et français prévus) et affiche la page
+  traduite dans le lecteur, avec un bouton pour revenir à l'original.
+- **Tout en local** : OCR PaddleOCR et modèle de traduction Hy-MT2 1.8B tournent sur le téléphone (GPU). Un serveur
+  sur PC reste possible en option pour les curieux.
+- **Mémoire de série** : si tu as aussi l'édition anglaise officielle d'une série, l'app s'en sert comme référence
+  (noms, ton, tournures) pour traduire les chapitres qu'elle n'a pas encore.
+- **Fiche unifiée** : une seule fiche par œuvre même si tu l'as depuis trois sources ; chaque chapitre s'affiche dans la
+  version disponible la meilleure pour ta langue de lecture (édition officielle, sinon raw traduit).
+- **File de traduction** avec temps restant, ordre modifiable, traduction automatique pendant la lecture ou dès qu'un
+  chapitre est téléchargé.
+- Tout le reste est Mihon : sources par extensions, bibliothèque, suivi, sauvegardes.
 
-## Objectifs
+## Installation (débutant)
 
-- **100 % sur le téléphone** : aucun serveur requis. Les moteurs légers (Google ML Kit) tournent partout,
-  les moteurs lourds (modèles ONNX, LLM locaux) sur les téléphones récents.
-- **Coréen d'abord** (webtoons), japonais ensuite (manga, texte vertical).
-- **Plugins** : des tiers peuvent ajouter des moteurs sans recompiler l'app, avec le même mécanisme
-  que les extensions de Mihon (APK séparés, dépôt JSON, vérification de signature), plus un mode isolé
-  pour les moteurs natifs.
-- **Licences permissives uniquement** : Yomikae reste sous Apache-2.0, comme Mihon.
+**Il te faut** : un téléphone Android 8 ou plus. Pour le modèle de traduction embarqué, un téléphone récent avec au
+moins 8 Go de mémoire (testé sur un Galaxy S26 Ultra). Sur un téléphone plus modeste, le moteur Google ML Kit reste
+disponible (moins bon, mais léger).
 
-## Feuille de route
+1. **Télécharge l'APK** dans les [Releases](https://github.com/DelDaxter/Yomikae/releases) (fichier
+   `Yomikae-…-arm64.apk`) et ouvre-le. Android te demandera d'autoriser l'installation depuis cette source : accepte.
+   Yomikae s'installe à côté de Mihon sans le remplacer.
+2. **Ajoute des sources.** Yomikae n'a aucune source intégrée, comme Mihon. Dans l'app : *Plus → Paramètres →
+   Explorer → Dépôts d'extensions*, ajoute :
+   - `https://raw.githubusercontent.com/keiyoushi/extensions/repo/index.min.json` (sources anglaises, dont Webtoons.com) ;
+   - `https://raw.githubusercontent.com/oneulddu/Korean-Mihon-Extensions/repo/index.min.json` (sources coréennes,
+     dont Naver Webtoon).
 
-| Palier | Contenu | État |
-| :--- | :--- | :--- |
-| P0 | Fork, renommage, environnement de build | en cours |
-| P1 | Traduction d'un chapitre coréen en tâche de fond avec ML Kit (OCR + traduction), pages traduites stockées à côté des originales | à faire |
-| P2 | Interfaces de moteurs, traduction à la volée des chapitres en ligne, bascule original/traduit | à faire |
-| P3 | Plugins APK (moteurs HTTP : API compatibles OpenAI, DeepL, serveur manga-image-translator) | à faire |
-| P4 | Japonais : détection RT-DETR, OCR manga-ocr (ONNX), effacement LaMa | à faire |
-| P5 | LLM local (Hy-MT2, Gemma 4) dans un moteur isolé, traduction directe vers le français | à faire |
-| P6 | Publication, dépôt de plugins, CI | à faire |
+   Puis *Explorer → Extensions* et installe celles que tu veux (par exemple **Naver Webtoon** pour les raws coréens
+   officiels et **Webtoons.com** pour l'anglais officiel). Sur Naver, cherche les titres en coréen.
+3. **Prépare la traduction** : *Plus → Paramètres → Traduction*.
+   - *Langue d'origine* : coréen. *Langue cible* : anglais.
+   - *Moteur de traduction* : **Sur cet appareil**. Dans *Modèle embarqué*, appuie sur le modèle pour le télécharger
+     (1,8 Go, une seule fois, en Wi-Fi).
+   - *Lecture du texte (OCR)* : PaddleOCR (18 Mo, téléchargés au premier usage).
+4. **Traduis un chapitre** : télécharge un chapitre coréen (icône ⬇ sur sa ligne), puis appuie sur l'icône de
+   traduction 文A qui apparaît à côté. Suis l'avancement dans *Plus → File de traduction*. Ouvre le chapitre : il est
+   traduit. Compte 3 à 4 secondes par page sur un téléphone récent.
 
-## Compiler
+### Pour aller plus loin
 
-Prérequis : JDK 21, SDK Android (platform 37.2, build-tools 37).
+- **Traduire pendant la lecture** (activé par défaut) : ouvrir un chapitre téléchargé lance sa traduction en tête de
+  file et prépare le suivant.
+- **Traduire les nouveaux téléchargements** : réglage global dans *Traduction*, ou série par série (fiche → ⋮ →
+  *Traduction automatique…*).
+- **Fiche unifiée** : depuis la fiche à garder, ⋮ → *Fiche unifiée…*, coche les autres fiches de la même œuvre.
+  Le titre, le synopsis et les chapitres passent dans ta langue de lecture quand une édition l'a.
+- **Mémoire de série** : fiche → ⋮ → *Mémoire de série* : choisis l'édition traduite de référence, *Lire le texte de la
+  référence*, puis *Apparier les bulles*. Si les numéros de chapitres ne concordent pas entre les éditions (prologue
+  compté « 1 » d'un côté), *Détecter* trouve le décalage.
+- **Glossaires** : un glossaire global (termes de genre, noblesse, formes d'adresse) est fourni et modifiable dans
+  *Traduction → Glossaire global* ; chaque série a le sien dans sa mémoire de série.
+
+## Compiler soi-même
+
+JDK 21 et le SDK Android (API 36). Dans `local.properties`, `sdk.dir` doit utiliser des barres obliques
+(`S:/Android/Sdk` sur Windows). Puis :
 
 ```
-./gradlew assembleDebug
+./gradlew :app:assembleDebug
 ```
 
-`-Pdist=ci` active la télémétrie Firebase de Mihon, que Yomikae n'utilise pas : ne pas l'utiliser.
+L'APK est dans `app/build/outputs/apk/debug/`. L'app de debug s'appelle `app.yomikae.dev` et cohabite avec la
+version normale.
+
+## Licences
+
+Yomikae est sous Apache-2.0, comme Mihon. Les briques ajoutées sont toutes sous licences permissives : PaddleOCR
+(Apache-2.0), ONNX Runtime (MIT), LiteRT-LM (Apache-2.0), modèle Hy-MT2 de Tencent (Apache-2.0), post-traitement
+DBNet adapté de [overlay-translator](https://github.com/ciddwd/overlay-translator) (Apache-2.0). Google ML Kit reste
+disponible comme moteur léger (bibliothèque propriétaire de Google, non requise).
+
+Les modèles ne sont pas dans l'APK : ils sont téléchargés à la première utilisation et vérifiés (SHA-256).
 
 ## Crédits
 
-Yomikae est un fork de [Mihon](https://github.com/mihonapp/mihon), lui-même issu de Tachiyomi.
-Tout le lecteur, la bibliothèque et le système d'extensions viennent de Mihon.
-Les extensions de sources Mihon fonctionnent telles quelles dans Yomikae.
-
-## Licence
-
-<pre>
-Copyright © 2015 Javier Tomás
-Copyright © 2024 Mihon Open Source Project
-Copyright © 2026 Yomikae contributors
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-</pre>
-
-## Avertissement
-
-Les développeurs de ce projet n'ont aucun lien avec les fournisseurs de contenu disponibles via les
-extensions. Ce projet n'héberge aucun contenu.
+[Mihon](https://github.com/mihonapp/mihon) et ses contributeurs ; [Keiyoushi](https://github.com/keiyoushi/extensions)
+et [Korean Mihon Extensions](https://github.com/oneulddu/Korean-Mihon-Extensions) pour les sources ;
+[Tencent Hunyuan](https://huggingface.co/tencent/Hy-MT2-1.8B) et la
+[communauté LiteRT](https://huggingface.co/litert-community/Hy-MT2-1.8B) pour le modèle de traduction ;
+[PaddlePaddle](https://github.com/PaddlePaddle/PaddleOCR) pour l'OCR.

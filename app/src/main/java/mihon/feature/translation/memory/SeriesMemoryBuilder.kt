@@ -30,13 +30,81 @@ class SeriesMemoryBuilder(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
-    class Report(val chaptersAligned: Int, val pairs: Int, val chaptersWithoutReferenceText: Int)
+    class Report(
+        val chaptersAligned: Int,
+        val pairs: Int,
+        val chaptersWithoutReferenceText: Int,
+        /** Offset found and saved by [detectOffset] during this run, null when unchanged. */
+        val offsetDetected: Double? = null,
+    )
+
+    /**
+     * Finds the chapter-number offset between the two editions from the height of their
+     * pages: two editions of the same episode are the same vertical strip, so their total
+     * heights match to within one percent, whatever the numbering. Returns the offset that
+     * pairs the most chapters, null when nothing better than the current one is found.
+     */
+    suspend fun detectOffset(mangaId: Long, sourceLanguage: String, targetLanguage: String): Double? {
+        val memory = memoryStore.load(mangaId)
+        val referenceId = memory.referenceMangaId ?: return null
+        val sourceHeights = getChaptersByMangaId.await(mangaId).mapNotNull { chapter ->
+            store.sidecarDir(chapter.id, sourceLanguage)?.let { stripHeight(it) }?.let { chapter.chapterNumber to it }
+        }
+        val referenceHeights = getChaptersByMangaId.await(referenceId).mapNotNull { chapter ->
+            stripHeight(store.chapterDir(chapter.id, ChapterTranslationJob.extractVariant(targetLanguage)))
+                ?.let { chapter.chapterNumber to it }
+        }
+        if (sourceHeights.isEmpty() || referenceHeights.isEmpty()) return null
+        val referenceByNumber = referenceHeights.associate { numberKey(it.first) to it.second }
+
+        fun matches(offset: Double): Int = sourceHeights.count { (number, height) ->
+            val other = referenceByNumber[numberKey(number + offset)] ?: return@count false
+            kotlin.math.abs(other - height) <= height * 0.01f
+        }
+
+        val current = memory.referenceOffset
+        var best = current
+        var bestMatches = matches(current)
+        for (candidate in CANDIDATE_OFFSETS) {
+            if (candidate == current) continue
+            val m = matches(candidate)
+            if (m > bestMatches) {
+                best = candidate
+                bestMatches = m
+            }
+        }
+        if (best == current || bestMatches < 1) return null
+        memoryStore.update(mangaId) { it.copy(referenceOffset = best) }
+        logcat { "Series memory $mangaId: chapter offset $best detected ($bestMatches matching chapters)" }
+        return best
+    }
+
+    private fun numberKey(number: Double): Long = kotlin.math.round(number * 100).toLong()
+
+    /** Total height of a chapter's pages at [COMMON_WIDTH], from its sidecars; null without any. */
+    private fun stripHeight(dir: File): Float? {
+        val files = dir.listFiles { f -> f.extension == "json" } ?: return null
+        if (files.isEmpty()) return null
+        var height = 0f
+        for (file in files) {
+            val page = runCatching { json.decodeFromString<ChapterTranslationJob.PageSidecar>(file.readText()) }
+                .getOrNull() ?: continue
+            height += page.height * COMMON_WIDTH / page.width
+        }
+        return height.takeIf { it > 0f }
+    }
 
     /**
      * Aligns every chapter of [mangaId] that has source-language sidecars with the chapter of
      * the same number in the reference edition, and stores the resulting examples.
      */
     suspend fun rebuild(mangaId: Long, sourceLanguage: String, targetLanguage: String): Report {
+        // A numbering offset the user did not set is looked for first (Naver's "000." prologue).
+        val offsetDetected = if (memoryStore.load(mangaId).referenceOffset == 0.0) {
+            detectOffset(mangaId, sourceLanguage, targetLanguage)
+        } else {
+            null
+        }
         val memory = memoryStore.load(mangaId)
         val referenceId = memory.referenceMangaId ?: return Report(0, 0, 0)
 
@@ -77,7 +145,7 @@ class SeriesMemoryBuilder(
         // Through update(): the glossary the user may have edited meanwhile is kept.
         memoryStore.update(mangaId) { it.copy(examples = kept, alignedChapters = aligned) }
         logcat { "Series memory $mangaId: $aligned chapters aligned, ${kept.size} pairs" }
-        return Report(aligned, kept.size, missingReference)
+        return Report(aligned, kept.size, missingReference, offsetDetected)
     }
 
     // ---- alignment ----
@@ -141,6 +209,7 @@ class SeriesMemoryBuilder(
 
     private companion object {
         const val COMMON_WIDTH = 720f
+        private val CANDIDATE_OFFSETS = listOf(-1.0, 1.0, -2.0, 2.0, -3.0, 3.0, -0.5, 0.5, 0.0)
         const val MIN_IOU = 0.4f
         const val MAX_TARGET_LENGTH = 90
     }

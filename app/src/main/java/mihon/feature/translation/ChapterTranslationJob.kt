@@ -230,6 +230,9 @@ class ChapterTranslationJob(
             background = preferences.llmBackground.get(),
             memory = memory,
             knownLines = memory.lines,
+            globalGlossary = SeriesMemoryStore.parseGlossaryText(preferences.globalGlossary.get())
+                .map { it.source to it.target },
+            keepHonorifics = preferences.keepHonorifics.get(),
         )
     }
 

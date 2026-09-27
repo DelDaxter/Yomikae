@@ -3,6 +3,7 @@ package mihon.feature.translation
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import mihon.feature.translation.memory.DefaultGlossary
 import mihon.feature.translation.ocr.OcrEngine
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
@@ -47,6 +48,16 @@ class TranslationPreferences(
 
     /** While reading, the current and the next downloaded chapters are translated in the background. */
     val prefetchWhileReading: Preference<Boolean> = preferenceStore.getBoolean("translation_prefetch", true)
+
+    /**
+     * Glossary shared by every series ("source = translation" per line). Starts with
+     * [DefaultGlossary.KO_EN]; only the entries present on a page are sent to the model.
+     */
+    val globalGlossary: Preference<String> =
+        preferenceStore.getString("translation_global_glossary", DefaultGlossary.KO_EN)
+
+    /** Keep Korean forms of address (hyung, noona, -nim…) instead of adapting them. */
+    val keepHonorifics: Preference<Boolean> = preferenceStore.getBoolean("translation_keep_honorifics", true)
 
     /** Global default: every finished download is queued for translation. */
     val autoTranslateDownloads: Preference<Boolean> = preferenceStore.getBoolean("translation_auto_downloads", false)

@@ -917,6 +917,17 @@
     <string name="merge_translated_label">traduit</string>
     <string name="merge_show_original_synopsis">Afficher le synopsis original</string>
     <string name="merge_show_translated_synopsis">Afficher le synopsis traduit</string>
+    <string name="pref_translation_global_glossary">Glossaire global</string>
+    <string name="pref_translation_global_glossary_summary">Termes de genre, titres de noblesse, formes d\'adresse, communs à toutes les séries</string>
+    <string name="pref_translation_honorifics">Garder les formes d\'adresse coréennes</string>
+    <string name="pref_translation_honorifics_summary">hyung, noona, oppa, -nim… comme dans les scans ; désactivé = titres anglais comme dans les éditions officielles</string>
+    <string name="global_glossary_title">Glossaire global</string>
+    <string name="global_glossary_info">Une entrée par ligne : source = traduction. Les lignes commençant par # sont des commentaires. Seules les entrées présentes sur une page sont données au modèle, la liste peut donc être longue. Le glossaire d\'une série a priorité sur celui-ci.</string>
+    <string name="global_glossary_count">%1$d entrées</string>
+    <string name="global_glossary_reset">Remettre la liste par défaut</string>
+    <string name="series_memory_detect_offset">Détecter</string>
+    <string name="series_memory_offset_detected">Décalage de chapitres trouvé : %1$s</string>
+    <string name="series_memory_offset_not_detected">Aucun décalage trouvé : les numéros concordent déjà, ou trop peu de chapitres sont traduits et extraits des deux côtés</string>
     <string name="auto_translate_title">Traduire les nouveaux téléchargements de cette série</string>
     <string name="auto_translate_default">Suivre le réglage global (%1$s)</string>
     <string name="auto_translate_on">Toujours</string>

@@ -8,12 +8,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.more.settings.Preference
 import kotlinx.coroutines.launch
 import mihon.app.di.appGraph
 import mihon.feature.translation.LocalLlmBackend
 import mihon.feature.translation.TextTranslator
 import mihon.feature.translation.TranslationPreferences
+import mihon.feature.translation.memory.GlobalGlossaryScreen
 import mihon.feature.translation.ocr.ModelDownloader
 import mihon.feature.translation.ocr.OcrEngine
 import tachiyomi.core.common.util.lang.withIOContext
@@ -35,6 +38,7 @@ object SettingsTranslationScreen : SearchableSettings {
     @Composable
     override fun getPreferences(): List<Preference> {
         val context = LocalContext.current
+        val navigator = LocalNavigator.currentOrThrow
         val preferences = remember { context.appGraph.translationPreferences }
         val languageName: (String) -> String = { code -> Locale(code).getDisplayLanguage(Locale.getDefault()) }
         val engine by preferences.engine.collectAsState()
@@ -89,6 +93,16 @@ object SettingsTranslationScreen : SearchableSettings {
                         preference = preferences.llmBackground,
                         title = stringResource(MR.strings.pref_translation_llm_background),
                         enabled = engine != TextTranslator.ENGINE_MLKIT,
+                    ),
+                    Preference.PreferenceItem.TextPreference(
+                        title = stringResource(MR.strings.pref_translation_global_glossary),
+                        subtitle = stringResource(MR.strings.pref_translation_global_glossary_summary),
+                        onClick = { navigator.push(GlobalGlossaryScreen()) },
+                    ),
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = preferences.keepHonorifics,
+                        title = stringResource(MR.strings.pref_translation_honorifics),
+                        subtitle = stringResource(MR.strings.pref_translation_honorifics_summary),
                     ),
                 ),
             ),

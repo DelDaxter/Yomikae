@@ -25,6 +25,10 @@ class LlmTranslator(
     private val memory: SeriesMemory? = null,
     /** Lines already translated for this series (names, shouts): reused verbatim. */
     knownLines: Map<String, String> = emptyMap(),
+    /** Glossary shared by every series; only the entries found on the page are sent. */
+    private val globalGlossary: List<Pair<String, String>> = emptyList(),
+    /** Keep Korean forms of address (hyung, noona, -nim…) rather than adapting them. */
+    private val keepHonorifics: Boolean = true,
 ) : TextTranslator {
 
     // Lines stored by earlier versions are filtered again: only names and shouts are reused.
@@ -57,7 +61,12 @@ class LlmTranslator(
 
     /** Whole page in one prompt; returns null for lines the model did not answer well. */
     private suspend fun translateBatch(lines: List<String>): List<String?> {
-        val pairs = memory?.promptPairs(lines, backend.maxReferencePairs).orEmpty()
+        val seriesPairs = memory?.promptPairs(lines, backend.maxReferencePairs).orEmpty()
+        val seriesSources = seriesPairs.map { it.first }.toSet()
+        val globalPairs = globalGlossary.filter { (source, _) ->
+            source !in seriesSources && lines.any { it.contains(source) }
+        }
+        val pairs = globalPairs + seriesPairs
         val answers = askForPage(lines, pairs)
         // A small model sometimes answers a bubble with the translation of one of the examples
         // instead of its own. Such a line is dropped and translated alone, without examples.
@@ -91,6 +100,7 @@ class LlmTranslator(
                     "with the same number and vertical bar as its source line. " +
                     "A line that is only a sound effect or onomatopoeia becomes a short comic-book sound effect " +
                     "in capitals (KEKEKE, ACK!, WHOOSH), not a description. " +
+                    (if (keepHonorifics) HONORIFICS_RULE else "") +
                     "Only output the translated lines without any additional explanation.",
             )
             appendLine()
@@ -148,6 +158,9 @@ class LlmTranslator(
         const val MAX_OUTPUT_TOKENS = 1024
 
         private val LINE_PATTERN = Regex("""^([0-9N]+)\s*[|｜]\s*(.*)$""")
+        private const val HONORIFICS_RULE =
+            "Keep Korean forms of address as fans expect them (hyung, noona, oppa, unnie, sunbae, ahjussi, " +
+                "-nim, -ssi) instead of replacing them with English titles. "
         private const val DEFAULT_BACKGROUND =
             "These are the speech bubbles of one page of a Korean webtoon, in reading order. " +
                 "Use natural spoken English as in published comics. Keep character names consistent."
