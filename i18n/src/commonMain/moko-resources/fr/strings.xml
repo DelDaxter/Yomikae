@@ -905,6 +905,12 @@
     <string name="pref_translation_show_summary">Quand une traduction existe pour le chapitre</string>
     <string name="pref_translation_info">La traduction se fait sur cet appareil avec Google ML Kit. Téléchargez un chapitre, puis choisissez Traduire dans son menu. Les modèles de traduction (environ 30 Mo par langue) sont téléchargés à la première utilisation.</string>
     <string name="translation_notifier_title">Traduction en cours</string>
+    <string name="pref_translation_engine">Moteur de traduction</string>
+    <string name="translation_engine_mlkit">Google ML Kit (sur cet appareil)</string>
+    <string name="translation_engine_llm">Serveur LLM (llama.cpp, API compatible OpenAI)</string>
+    <string name="pref_translation_llm_url">Adresse du serveur LLM</string>
+    <string name="pref_translation_llm_model">Nom du modèle (optionnel)</string>
+    <string name="pref_translation_llm_background">Contexte pour le LLM (série, ton, noms)</string>
     <string name="translation_none_for_chapter">Pas encore de traduction pour ce chapitre. Téléchargez-le, puis choisissez Traduire dans son menu.</string>
     <string name="action_translate_downloaded">Traduire les chapitres téléchargés</string>
     <string name="action_retranslate">Traduire à nouveau</string>

@@ -26,26 +26,34 @@ class TranslationStore(
     private val root: File
         get() = File(context.filesDir, "translations")
 
-    fun chapterDir(chapterId: Long, source: String, target: String): File =
-        File(root, "$chapterId/$source-$target")
-
-    fun pageFile(chapterId: Long, pageIndex: Int, source: String, target: String): File =
-        File(chapterDir(chapterId, source, target), "%03d.jpg".format(pageIndex))
-
-    private fun doneMarker(chapterId: Long, source: String, target: String): File =
-        File(chapterDir(chapterId, source, target), ".done")
-
-    fun markDone(chapterId: Long, source: String, target: String) {
-        doneMarker(chapterId, source, target).createNewFile()
+    /**
+     * Name of the output folder for the current settings: "<source>-<target>" for ML Kit (the
+     * original layout) and "<source>-<target>-<engine>" for the other engines, so switching
+     * engine never shows a page made by another one.
+     */
+    fun currentVariant(): String {
+        val base = "${preferences.sourceLanguage.get()}-${preferences.targetLanguage.get()}"
+        val engine = preferences.engine.get()
+        return if (engine == TextTranslator.ENGINE_MLKIT) base else "$base-$engine"
     }
 
-    /** True when the chapter has been fully translated for the languages currently selected. */
-    fun isChapterTranslated(chapterId: Long): Boolean =
-        doneMarker(chapterId, preferences.sourceLanguage.get(), preferences.targetLanguage.get()).exists()
+    fun chapterDir(chapterId: Long, variant: String): File = File(root, "$chapterId/$variant")
 
-    /** True when at least one page of the chapter is translated for the current languages. */
+    fun pageFile(chapterId: Long, pageIndex: Int, variant: String): File =
+        File(chapterDir(chapterId, variant), "%03d.jpg".format(pageIndex))
+
+    private fun doneMarker(chapterId: Long, variant: String): File = File(chapterDir(chapterId, variant), ".done")
+
+    fun markDone(chapterId: Long, variant: String) {
+        doneMarker(chapterId, variant).createNewFile()
+    }
+
+    /** True when the chapter has been fully translated with the current settings. */
+    fun isChapterTranslated(chapterId: Long): Boolean = doneMarker(chapterId, currentVariant()).exists()
+
+    /** True when at least one page of the chapter is translated with the current settings. */
     fun hasAnyTranslatedPage(chapterId: Long): Boolean {
-        val dir = chapterDir(chapterId, preferences.sourceLanguage.get(), preferences.targetLanguage.get())
+        val dir = chapterDir(chapterId, currentVariant())
         return dir.listFiles { f -> f.extension == "jpg" }?.isNotEmpty() == true
     }
 
@@ -71,12 +79,7 @@ class TranslationStore(
         original: () -> InputStream,
     ): InputStream {
         if (!preferences.showTranslated.get()) return original()
-        val file = pageFile(
-            chapterId,
-            pageIndex,
-            preferences.sourceLanguage.get(),
-            preferences.targetLanguage.get(),
-        )
+        val file = pageFile(chapterId, pageIndex, currentVariant())
         return if (file.exists()) file.inputStream() else original()
     }
 }

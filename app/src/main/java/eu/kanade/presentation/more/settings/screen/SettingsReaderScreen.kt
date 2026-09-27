@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.util.system.hasDisplayCutout
 import mihon.app.di.appGraph
+import mihon.feature.translation.TextTranslator
 import mihon.feature.translation.TranslationPreferences
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
@@ -449,6 +450,26 @@ object SettingsReaderScreen : SearchableSettings {
                     preference = translationPreferences.showTranslated,
                     title = stringResource(MR.strings.pref_translation_show),
                     subtitle = stringResource(MR.strings.pref_translation_show_summary),
+                ),
+                Preference.PreferenceItem.ListPreference(
+                    preference = translationPreferences.engine,
+                    entries = mapOf(
+                        TextTranslator.ENGINE_MLKIT to stringResource(MR.strings.translation_engine_mlkit),
+                        TextTranslator.ENGINE_LLM to stringResource(MR.strings.translation_engine_llm),
+                    ),
+                    title = stringResource(MR.strings.pref_translation_engine),
+                ),
+                Preference.PreferenceItem.EditTextPreference(
+                    preference = translationPreferences.llmServerUrl,
+                    title = stringResource(MR.strings.pref_translation_llm_url),
+                ),
+                Preference.PreferenceItem.EditTextPreference(
+                    preference = translationPreferences.llmModel,
+                    title = stringResource(MR.strings.pref_translation_llm_model),
+                ),
+                Preference.PreferenceItem.EditTextPreference(
+                    preference = translationPreferences.llmBackground,
+                    title = stringResource(MR.strings.pref_translation_llm_background),
                 ),
                 Preference.PreferenceItem.InfoPreference(
                     title = stringResource(MR.strings.pref_translation_info),

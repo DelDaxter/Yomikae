@@ -1113,6 +1113,12 @@
     <string name="pref_translation_show_summary">When a translation exists for the chapter</string>
     <string name="pref_translation_info">Translation runs on this device with Google ML Kit. Download a chapter, then choose Translate from its menu. Translation models (about 30 MB per language) are downloaded on first use.</string>
     <string name="translation_notifier_title">Translating</string>
+    <string name="pref_translation_engine">Translation engine</string>
+    <string name="translation_engine_mlkit">Google ML Kit (on this device)</string>
+    <string name="translation_engine_llm">LLM server (llama.cpp, OpenAI-compatible API)</string>
+    <string name="pref_translation_llm_url">LLM server address</string>
+    <string name="pref_translation_llm_model">Model name (optional)</string>
+    <string name="pref_translation_llm_background">Background for the LLM (series, tone, names)</string>
     <string name="translation_none_for_chapter">No translation for this chapter yet. Download it, then choose Translate in its menu.</string>
     <string name="action_translate_downloaded">Translate downloaded chapters</string>
     <string name="action_retranslate">Translate again</string>

@@ -3,11 +3,6 @@ package mihon.feature.translation
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
-import com.google.mlkit.common.model.DownloadConditions
-import com.google.mlkit.nl.translate.TranslateLanguage
-import com.google.mlkit.nl.translate.Translation
-import com.google.mlkit.nl.translate.Translator
-import com.google.mlkit.nl.translate.TranslatorOptions
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -21,21 +16,20 @@ import java.io.ByteArrayOutputStream
 import java.io.Closeable
 
 /**
- * Yomikae: first translation engine, built only on Google ML Kit (no native library to build).
+ * Yomikae: translates one page image.
  *
  * Pipeline for one page:
  *   1. decode the image,
- *   2. OCR with the recognizer of the source language (tiled when the page is very tall),
- *   3. translate every text block (with a small cache so repeated sentences cost nothing),
- *   4. paint the translation over the original text (see [PageRenderer]),
+ *   2. OCR with the ML Kit recognizer of the source language (tiled when the page is very tall),
+ *   3. hand every text block of the page to the [TextTranslator] (ML Kit, LLM, ...),
+ *   4. paint the translations over the original text (see [PageRenderer]),
  *   5. encode as JPEG.
  *
- * One instance is meant to live for the duration of a job: the ML Kit clients and the
- * translation cache are reused across pages. Call [close] when done.
+ * One instance is meant to live for the duration of a job. Call [close] when done.
  */
-class MlKitPageTranslator(
-    private val sourceLanguage: String,
-    private val targetLanguage: String,
+class PageTranslator(
+    sourceLanguage: String,
+    private val translator: TextTranslator,
 ) : Closeable {
 
     private val recognizer: TextRecognizer = when (sourceLanguage) {
@@ -44,22 +38,11 @@ class MlKitPageTranslator(
         else -> TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     }
 
-    private val translator: Translator = Translation.getClient(
-        TranslatorOptions.Builder()
-            .setSourceLanguage(requireNotNull(TranslateLanguage.fromLanguageTag(sourceLanguage)))
-            .setTargetLanguage(requireNotNull(TranslateLanguage.fromLanguageTag(targetLanguage)))
-            .build(),
-    )
-
     private val renderer = PageRenderer()
-    private val translationCache = HashMap<String, String>()
 
-    /**
-     * Makes sure the ML Kit translation model is on the device. Downloads it (about 30 MB per
-     * language) the first time. Must be called once before [translatePage].
-     */
+    /** Prepares the translation engine (model download, connection check). Call once. */
     suspend fun prepare() {
-        translator.downloadModelIfNeeded(DownloadConditions.Builder().build()).await()
+        translator.prepare()
     }
 
     /**
@@ -72,11 +55,13 @@ class MlKitPageTranslator(
             val blocks = recognize(bitmap)
             if (blocks.isEmpty()) return null
 
-            val translated = blocks.map { block ->
+            // The whole page goes to the engine at once, so context-aware engines can use it.
+            val texts = translator.translate(blocks.map { it.text })
+            val translated = blocks.zip(texts) { block, text ->
                 PageRenderer.Block(
                     box = block.box,
                     lineCount = block.lineCount,
-                    text = translate(block.text),
+                    text = text,
                 )
             }.filter { it.text.isNotBlank() }
             if (translated.isEmpty()) return null
@@ -90,13 +75,6 @@ class MlKitPageTranslator(
         } finally {
             bitmap.recycle()
         }
-    }
-
-    private suspend fun translate(text: String): String {
-        translationCache[text]?.let { return it }
-        val result = translator.translate(text).await()
-        translationCache[text] = result
-        return result
     }
 
     /**

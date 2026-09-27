@@ -108,7 +108,8 @@ class ChapterTranslationJob(
 
         val sourceLanguage = preferences.sourceLanguage.get()
         val targetLanguage = preferences.targetLanguage.get()
-        val translator = MlKitPageTranslator(sourceLanguage, targetLanguage)
+        val variant = store.currentVariant()
+        val translator = PageTranslator(sourceLanguage, createTextTranslator(sourceLanguage, targetLanguage))
         var failures = 0
         try {
             translator.prepare()
@@ -124,7 +125,7 @@ class ChapterTranslationJob(
             for (chapter in chapters) {
                 if (isStopped) break
                 try {
-                    translateChapter(translator, manga, source, chapter, sourceLanguage, targetLanguage)
+                    translateChapter(translator, manga, source, chapter, variant)
                 } catch (e: Exception) {
                     failures++
                     queue.markError(chapter.id, e.message)
@@ -154,13 +155,25 @@ class ChapterTranslationJob(
         return if (failures == 0) Result.success() else Result.failure()
     }
 
+    /** Picks the translation engine from the settings. */
+    private fun createTextTranslator(sourceLanguage: String, targetLanguage: String): TextTranslator {
+        return when (preferences.engine.get()) {
+            TextTranslator.ENGINE_LLM -> LlmTranslator(
+                serverUrl = preferences.llmServerUrl.get(),
+                model = preferences.llmModel.get(),
+                targetLanguage = targetLanguage,
+                background = preferences.llmBackground.get(),
+            )
+            else -> MlKitTranslator(sourceLanguage, targetLanguage)
+        }
+    }
+
     private suspend fun translateChapter(
-        translator: MlKitPageTranslator,
+        translator: PageTranslator,
         manga: tachiyomi.domain.manga.model.Manga,
         source: eu.kanade.tachiyomi.source.Source,
         chapter: Chapter,
-        sourceLanguage: String,
-        targetLanguage: String,
+        variant: String,
     ) {
         // Reuse the reader's own loader so page order is exactly what the reader will show.
         // The loader must stay open until the last page is read: for CBZ chapters the page
@@ -174,13 +187,13 @@ class ChapterTranslationJob(
             if (pages.isEmpty()) error(context.stringResource(MR.strings.page_list_empty_error))
             queue.markRunning(chapter.id, pages.size)
 
-            val dir = store.chapterDir(chapter.id, sourceLanguage, targetLanguage).apply { mkdirs() }
+            val dir = store.chapterDir(chapter.id, variant).apply { mkdirs() }
 
             pages.forEachIndexed { index, page ->
                 if (isStopped) return
                 showProgress(chapter.name, index + 1, pages.size)
 
-                val target = store.pageFile(chapter.id, page.index, sourceLanguage, targetLanguage)
+                val target = store.pageFile(chapter.id, page.index, variant)
                 if (target.exists()) {
                     queue.markPage(chapter.id, index + 1, pageMillis = null)
                     return@forEachIndexed
@@ -202,7 +215,7 @@ class ChapterTranslationJob(
             }
 
             if (!isStopped) {
-                store.markDone(chapter.id, sourceLanguage, targetLanguage)
+                store.markDone(chapter.id, variant)
                 queue.markDone(chapter.id)
             }
         } finally {
