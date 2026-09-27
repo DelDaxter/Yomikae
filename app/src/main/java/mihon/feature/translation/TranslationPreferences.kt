@@ -87,6 +87,24 @@ class TranslationPreferences(
         autoTranslateOff.set(if (mode == AutoMode.OFF) autoTranslateOff.get() + key else autoTranslateOff.get() - key)
     }
 
+    /**
+     * Reading language chosen for one series ("mangaId:lang" entries). A series without an
+     * entry follows [targetLanguage]. It decides which edition's title and synopsis a unified
+     * entry shows and which version of each chapter comes first.
+     */
+    val readingLanguageOverrides: Preference<Set<String>> =
+        preferenceStore.getStringSet("translation_reading_language")
+
+    fun readingLanguage(mangaId: Long): String =
+        readingLanguageOverrides.get().firstOrNull { it.startsWith("$mangaId:") }?.substringAfter(':')
+            ?: targetLanguage.get()
+
+    /** Choosing the global language again removes the override, so the series follows it. */
+    fun setReadingLanguage(mangaId: Long, language: String) {
+        val kept = readingLanguageOverrides.get().filterNot { it.startsWith("$mangaId:") }.toSet()
+        readingLanguageOverrides.set(if (language == targetLanguage.get()) kept else kept + "$mangaId:$language")
+    }
+
     /** Should a chapter of this series be translated as soon as it is downloaded? */
     fun autoTranslateFor(mangaId: Long): Boolean = when (autoTranslateMode(mangaId)) {
         AutoMode.ON -> true

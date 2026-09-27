@@ -224,7 +224,11 @@ class MangaViewModel(
                 downloadManager.queueState,
                 translationQueue.items,
                 memberChapters,
-            ) { mangaAndChapters, _, _, _, members -> mangaAndChapters to members }
+                translationPreferences.readingLanguageOverrides.changes(),
+            ) { values ->
+                @Suppress("UNCHECKED_CAST")
+                (values[0] as Pair<Manga, List<Chapter>>) to (values[4] as List<Pair<Manga, List<Chapter>>>)
+            }
                 .collectLatest { (mangaAndChapters, members) ->
                     // On a cold start this can emit before the initial Success state exists,
                     // and the merged list of a unified entry would be lost until the next
@@ -237,6 +241,8 @@ class MangaViewModel(
                     val displayDescription = groupDisplayDescription
                     val alternativeDescription = groupAlternativeDescription
                     val displayGenre = groupDisplayGenre
+                    val readingLanguage = translationPreferences.readingLanguage(manga.id)
+                    val readingLanguageCustom = readingLanguage != translationPreferences.targetLanguage.get()
                     updateSuccessState {
                         it.copy(
                             manga = manga,
@@ -246,6 +252,8 @@ class MangaViewModel(
                             displayDescription = displayDescription,
                             alternativeDescription = alternativeDescription,
                             displayGenre = displayGenre,
+                            readingLanguage = readingLanguage,
+                            readingLanguageCustom = readingLanguageCustom,
                         )
                     }
                 }
@@ -504,6 +512,19 @@ class MangaViewModel(
         translationPreferences.setAutoTranslateMode(mangaId, mode)
     }
 
+    /** Yomikae: the languages offered are the translation languages plus those of the entry's editions. */
+    fun showReadingLanguageDialog() {
+        val manga = successState?.manga ?: return
+        val options = (TranslationPreferences.TARGET_LANGUAGES + entryLanguages).distinct()
+        updateSuccessState {
+            it.copy(dialog = Dialog.ReadingLanguage(manga, translationPreferences.readingLanguage(manga.id), options))
+        }
+    }
+
+    fun setReadingLanguage(mangaId: Long, language: String) {
+        translationPreferences.setReadingLanguage(mangaId, language)
+    }
+
     fun showSetFetchIntervalDialog() {
         val manga = successState?.manga ?: return
         updateSuccessState {
@@ -653,6 +674,9 @@ class MangaViewModel(
     private var groupAlternativeDescription: String? = null
     private var groupDisplayGenre: List<String>? = null
 
+    /** Languages of the editions in the entry (offered in the reading language dialog). */
+    private var entryLanguages: List<String> = emptyList()
+
     private suspend fun mergedChapterItems(
         manga: Manga,
         chapters: List<Chapter>,
@@ -665,6 +689,16 @@ class MangaViewModel(
             groupDisplayDescription = null
             groupAlternativeDescription = null
             groupDisplayGenre = null
+            val source = sourceManager.getOrStub(manga.source)
+            val hasReference = seriesMemoryStore.load(manga.id).referenceMangaId != null
+            entryLanguages = listOfNotNull(
+                MergedChapters.entryLanguage(
+                    manga.title,
+                    source.lang,
+                    hasReference,
+                    translationPreferences.sourceLanguage.get(),
+                ),
+            )
             return chapters.toChapterListItems(manga)
         }
         val mangas = (members.map { it.first } + manga).associateBy { it.id }
@@ -687,7 +721,8 @@ class MangaViewModel(
                 order = order[m.id] ?: Int.MAX_VALUE,
             )
         }
-        val target = translationPreferences.targetLanguage.get()
+        entryLanguages = infos.values.mapNotNull { it.language }.distinct()
+        val target = translationPreferences.readingLanguage(manga.id)
         val primaryLanguage = infos[manga.id]?.language
         val wantedLanguage = if (primaryLanguage == target) rawLanguage else target
         val otherEntry = mangas.values.firstOrNull { it.id != manga.id && infos[it.id]?.language == wantedLanguage }
@@ -709,7 +744,7 @@ class MangaViewModel(
         val rows = MergedChapters.merge(
             chaptersByManga = members.associate { it.first.id to it.second } + (manga.id to chapters),
             members = infos,
-            targetLanguage = translationPreferences.targetLanguage.get(),
+            targetLanguage = target,
             sourceLanguage = translationPreferences.sourceLanguage.get(),
             isTranslated = translationStore::isChapterTranslated,
             translatedLabel = context.stringResource(MR.strings.merge_translated_label),
@@ -764,7 +799,7 @@ class MangaViewModel(
         viewModelScope.launchIO {
             val entries = (listOf(manga.id) + memberIds).mapNotNull { id -> mangaRepository.getMangaById(id) }
             val langOf = entries.associate { it.id to sourceManager.getOrStub(it.source).lang }
-            val target = translationPreferences.targetLanguage.get()
+            val target = translationPreferences.readingLanguage(manga.id)
             val source = translationPreferences.sourceLanguage.get()
             val reference = entries.firstOrNull { langOf[it.id] == target } ?: return@launchIO
             entries.filter { langOf[it.id] == source }.forEach { raw ->
@@ -1387,6 +1422,7 @@ class MangaViewModel(
         data class Migrate(val target: Manga, val current: Manga) : Dialog
         data class SetFetchInterval(val manga: Manga) : Dialog
         data class AutoTranslate(val manga: Manga) : Dialog
+        data class ReadingLanguage(val manga: Manga, val current: String, val options: List<String>) : Dialog
         data class Merge(val candidates: List<MergeCandidate>, val members: Set<Long>) : Dialog
         data object SettingsSheet : Dialog
         data object TrackSheet : Dialog
@@ -1452,6 +1488,10 @@ class MangaViewModel(
             val displayDescription: String? = null,
             val alternativeDescription: String? = null,
             val displayGenre: List<String>? = null,
+
+            /** Yomikae: language shown on the action row button; custom = differs from the global one. */
+            val readingLanguage: String? = null,
+            val readingLanguageCustom: Boolean = false,
         ) : State {
             val title: String get() = displayTitle ?: manga.title
             val description: String? get() = displayDescription ?: manga.description

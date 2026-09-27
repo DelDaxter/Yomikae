@@ -242,7 +242,7 @@ class ReaderViewModel(
         return MergedChapters.merge(
             chaptersByManga = others.associate { it.first.id to it.second } + (manga.id to own),
             members = infos,
-            targetLanguage = translationPreferences.targetLanguage.get(),
+            targetLanguage = translationPreferences.readingLanguage(group.primaryMangaId),
             sourceLanguage = translationPreferences.sourceLanguage.get(),
             isTranslated = translationStore::isChapterTranslated,
             translatedLabel = "",
