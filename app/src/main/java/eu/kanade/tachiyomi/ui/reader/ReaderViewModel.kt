@@ -220,13 +220,20 @@ class ReaderViewModel(
                 }
             }
         if (others.isEmpty()) return own
+        val rawLanguage = translationPreferences.sourceLanguage.get()
         val infos = (others.map { it.first } + manga).associate { m ->
             val source = sourceManager.getOrStub(m.source)
+            val memory = seriesMemoryStore.load(m.id)
             m.id to MergedChapters.Member(
                 mangaId = m.id,
-                language = source.lang.takeIf { it.isNotBlank() },
+                language = MergedChapters.entryLanguage(
+                    m.title,
+                    source.lang,
+                    memory.referenceMangaId != null,
+                    rawLanguage,
+                ),
                 sourceName = source.name,
-                numberOffset = seriesMemoryStore.load(m.id).referenceOffset,
+                numberOffset = memory.referenceOffset,
             )
         }
         return MergedChapters.merge(

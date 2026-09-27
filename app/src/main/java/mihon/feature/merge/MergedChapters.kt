@@ -28,6 +28,24 @@ object MergedChapters {
         val numberOffset: Double = 0.0,
     )
 
+    /**
+     * The language of an entry is not always the language its source declares: aggregators
+     * list raws under an English extension ("No Man's Land Raw" on WebtoonScan). An entry that
+     * has a reference edition in the series memory is a raw, and so is one whose title says so.
+     */
+    fun entryLanguage(
+        title: String,
+        sourceLanguage: String?,
+        hasReferenceEdition: Boolean,
+        rawLanguage: String,
+    ): String? = when {
+        hasReferenceEdition -> rawLanguage
+        RAW_TITLE.containsMatchIn(title) -> rawLanguage
+        else -> sourceLanguage?.takeIf { it.isNotBlank() }
+    }
+
+    private val RAW_TITLE = Regex("""(?i)(^|[\s(\[-])raws?($|[\s)\]-])""")
+
     class Row(
         val chapter: Chapter,
         /** "EN · Webtoons.com", "KO · Naver Webtoon · traduit": shown next to the chapter. */

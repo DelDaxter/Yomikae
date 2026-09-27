@@ -627,13 +627,20 @@ class MangaViewModel(
         }
         val mangas = (members.map { it.first } + manga).associateBy { it.id }
         groupMangas = mangas
+        val rawLanguage = translationPreferences.sourceLanguage.get()
         val infos = mangas.values.associate { m ->
             val source = sourceManager.getOrStub(m.source)
+            val memory = seriesMemoryStore.load(m.id)
             m.id to MergedChapters.Member(
                 mangaId = m.id,
-                language = source.lang.takeIf { it.isNotBlank() },
+                language = MergedChapters.entryLanguage(
+                    m.title,
+                    source.lang,
+                    memory.referenceMangaId != null,
+                    rawLanguage,
+                ),
                 sourceName = source.name,
-                numberOffset = seriesMemoryStore.load(m.id).referenceOffset,
+                numberOffset = memory.referenceOffset,
             )
         }
         val rows = MergedChapters.merge(
@@ -656,12 +663,15 @@ class MangaViewModel(
     fun showMergeDialog() {
         val manga = successState?.manga ?: return
         viewModelScope.launchIO {
+            val rawLanguage = translationPreferences.sourceLanguage.get()
             val candidates = getFavorites.await()
                 .filter { it.id != manga.id }
                 .sortedBy { it.title }
                 .map { m ->
                     val source = sourceManager.getOrStub(m.source)
-                    MergeCandidate(m.id, m.title, "${source.lang.uppercase()} · ${source.name}")
+                    val hasReference = seriesMemoryStore.load(m.id).referenceMangaId != null
+                    val language = MergedChapters.entryLanguage(m.title, source.lang, hasReference, rawLanguage) ?: "?"
+                    MergeCandidate(m.id, m.title, "${language.uppercase()} · ${source.name}")
                 }
             val members = groupStore.groupOfPrimary(manga.id)?.memberIds.orEmpty().toSet()
             updateSuccessState { it.copy(dialog = Dialog.Merge(candidates, members)) }
