@@ -56,11 +56,13 @@ import mihon.app.di.injekt.MetroInjektRegistrar
 import mihon.core.metro.GraphProvider
 import mihon.core.migration.Migration
 import mihon.core.migration.Migrator
+import mihon.feature.setup.DefaultExtensionStores
 import mihon.telemetry.TelemetryConfig
 import org.conscrypt.Conscrypt
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
+import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
@@ -84,6 +86,8 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
     @Inject private lateinit var networkPreferences: NetworkPreferences
 
     @Inject private lateinit var uiPreferences: UiPreferences
+
+    @Inject private lateinit var defaultExtensionStores: DefaultExtensionStores
 
     @Inject private lateinit var coverCache: CoverCache
 
@@ -125,6 +129,9 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
 
         val scope = ProcessLifecycleOwner.get().lifecycleScope
+
+        // Yomikae: the default extension stores, once, so a new user has sources to pick from.
+        scope.launchIO { defaultExtensionStores.seedOnce() }
 
         // Show notification to disable Incognito Mode when it's enabled
         basePreferences.incognitoMode.changes()
