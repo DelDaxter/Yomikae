@@ -192,7 +192,13 @@ class PageTranslator(
             } else {
                 val a = merged[index]
                 val box = Rect(a.box).apply { union(block.box) }
-                merged[index] = OcrBlock(a.text + " " + block.text, box, a.lineCount + block.lineCount)
+                // Two reads of the same text (overlapping OCR boxes) must not be glued twice.
+                val text = when {
+                    a.text.contains(block.text) -> a.text
+                    block.text.contains(a.text) -> block.text
+                    else -> a.text + " " + block.text
+                }
+                merged[index] = OcrBlock(text, box, a.lineCount + block.lineCount)
             }
         }
         return merged

@@ -144,7 +144,7 @@ class LlmTranslator(
                     )
                 },
             )
-            put("temperature", 0.7)
+            put("temperature", 0.3)
             put("top_p", 0.6)
             put("top_k", 20)
             put("repeat_penalty", 1.05)
