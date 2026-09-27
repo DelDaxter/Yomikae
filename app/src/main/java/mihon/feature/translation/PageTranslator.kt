@@ -165,7 +165,10 @@ class PageTranslator(
         val t = text.trim()
         if (t.length < 2) return true
         if (URL_PATTERN.containsMatchIn(t)) return true
-        if (WATERMARK_WORDS.any { t.contains(it) }) return true
+        // Site banners are compared without spaces: OCR splits "웹툰미리보기" at random places.
+        val compact = t.filterNot { it.isWhitespace() }
+        if (WATERMARK_WORDS.any { compact.contains(it) }) return true
+        if (WATERMARK_PARTS.count { compact.contains(it) } >= 2) return true
         if (t.length <= 8 && WATERMARK_WORDS.any { jamoSimilarity(t, it) >= 0.6f }) return true
         if (!t.any { it.isLetter() }) return true
         // A Korean page never yields a block without Hangul; such a block is a misread of
@@ -260,6 +263,12 @@ class PageTranslator(
         val URL_PATTERN = Regex("""(?i)([.,]\s*c[o0][mnr]{1,2}|\.net|\.org|\.kr|\.io|www\.|http)""")
 
         /** Site logos and "read it first on..." banners that scan sites stamp on pages. */
-        val WATERMARK_WORDS = listOf("뉴토끼", "구글검색", "웹툰미리보기", "웹튼미리보기", "짬툰", "마나토끼", "북토끼", "툰코", "Newtoki", "Toonkor")
+        val WATERMARK_WORDS = listOf(
+            "뉴토끼", "구글검색", "구글검", "웹툰미리보기", "웹튼미리보기", "미리보기", "짬툰", "마나토끼", "북토끼", "툰코",
+            "Newtoki", "Toonkor",
+        )
+
+        /** Pieces of the "가장 빠른 웹툰 미리보기 구글검색" banner; two of them together mean the banner. */
+        val WATERMARK_PARTS = listOf("가장", "빠른", "웹툰", "웹튼", "미리", "보기", "구글")
     }
 }
