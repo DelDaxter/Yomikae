@@ -89,6 +89,8 @@ class LlmTranslator(
                     "Each line below is one speech bubble and starts with its number and a vertical bar. " +
                     "Translate every line, keep exactly the same number of lines, and start each translated line " +
                     "with the same number and vertical bar as its source line. " +
+                    "A line that is only a sound effect or onomatopoeia becomes a short comic-book sound effect " +
+                    "in capitals (KEKEKE, ACK!, WHOOSH), not a description. " +
                     "Only output the translated lines without any additional explanation.",
             )
             appendLine()

@@ -333,6 +333,19 @@ class MangaViewModel(
                 if (manualFetch) {
                     downloadNewChapters(update.newChapters)
                 }
+
+                // Yomikae: the member entries of a unified entry are refreshed too.
+                groupMangas.values.filter { it.id != state.manga.id }.forEach { member ->
+                    runCatching {
+                        updateMangaFromRemote(
+                            source = sourceManager.getOrStub(member.source),
+                            manga = member,
+                            fetchDetails = false,
+                            fetchChapters = fetchChapters,
+                            manualFetch = manualFetch,
+                        ).getOrThrow()
+                    }.onFailure { logcat(LogPriority.WARN, it) { "Refresh of ${member.title} failed" } }
+                }
             }
         } catch (_: CancellationException) {
             // ignore
