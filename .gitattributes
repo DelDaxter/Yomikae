@@ -1,24 +1,4 @@
-* text=auto
-* text eol=lf
-
-# Windows forced line-endings
-/.idea/* text eol=crlf
-
-# Gradle wrapper
-*.jar binary
-
-# Images
-*.webp binary
+*.onnx binary
+*.litertlm binary
+*.jks binary
 *.png binary
-*.jpg binary
-*.jpeg binary
-*.gif binary
-*.ico binary
-*.gz binary
-*.zip binary
-*.7z binary
-*.ttf binary
-*.eot binary
-*.woff binary
-*.pyc binary
-*.swp binary
