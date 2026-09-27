@@ -86,9 +86,10 @@ class LlmTranslator(
             appendLine(
                 "Please accurately translate the following text into ${languageName(targetLanguage)}, " +
                     "taking the provided background information into consideration. " +
-                    "Each numbered line is one speech bubble; translate every line, keep exactly the same " +
-                    "number of lines, and start each translated line with the same number and a vertical bar " +
-                    "(for example \"3| \"). Only output the translated lines without any additional explanation.",
+                    "Each line below is one speech bubble and starts with its number and a vertical bar. " +
+                    "Translate every line, keep exactly the same number of lines, and start each translated line " +
+                    "with the same number and vertical bar as its source line. " +
+                    "Only output the translated lines without any additional explanation.",
             )
             appendLine()
             lines.forEachIndexed { i, line -> appendLine("${i + 1}| ${line.replace('\n', ' ')}") }
