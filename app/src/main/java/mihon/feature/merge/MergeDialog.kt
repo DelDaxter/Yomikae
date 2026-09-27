@@ -40,6 +40,8 @@ fun MergeDialog(
     initialMembers: Set<Long>,
     onDismissRequest: () -> Unit,
     onConfirm: (members: List<Long>) -> Unit,
+    /** Dissolves the group entirely; null when there is no group yet. */
+    onDissolve: (() -> Unit)? = null,
 ) {
     var filter by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf(initialMembers) }
@@ -99,8 +101,15 @@ fun MergeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(stringResource(MR.strings.action_cancel))
+            Row {
+                if (onDissolve != null) {
+                    TextButton(onClick = onDissolve) {
+                        Text(stringResource(MR.strings.merge_dissolve))
+                    }
+                }
+                TextButton(onClick = onDismissRequest) {
+                    Text(stringResource(MR.strings.action_cancel))
+                }
             }
         },
     )

@@ -125,7 +125,10 @@ class MangaScreen(
             onSeriesMemoryClicked = { navigator.push(SeriesMemoryScreen(successState.manga.id)) },
             onAutoTranslateClicked = viewModel::showAutoTranslateDialog,
             // Only an entry of the library can be the primary of a unified entry.
-            onMergeClicked = viewModel::showMergeDialog.takeIf { successState.manga.favorite },
+            onMergeClicked = viewModel::showMergeDialog.takeIf {
+                successState.manga.favorite && !viewModel.isGroupMember(successState.manga.id)
+            },
+            onLeaveGroupClicked = viewModel::leaveGroup.takeIf { viewModel.isGroupMember(successState.manga.id) },
             onAddToLibraryClicked = {
                 viewModel.toggleFavorite()
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -282,6 +285,14 @@ class MangaScreen(
                     onConfirm = { members ->
                         viewModel.setGroupMembers(members)
                         onDismissRequest()
+                    },
+                    onDissolve = if (dialog.members.isNotEmpty()) {
+                        {
+                            viewModel.setGroupMembers(emptyList())
+                            onDismissRequest()
+                        }
+                    } else {
+                        null
                     },
                 )
             }
