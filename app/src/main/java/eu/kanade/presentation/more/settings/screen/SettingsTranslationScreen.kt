@@ -178,6 +178,11 @@ object SettingsTranslationScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_translation_local_gpu),
                     subtitle = stringResource(MR.strings.pref_translation_local_gpu_summary),
                 ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = preferences.pauseWhenHot,
+                    title = stringResource(MR.strings.pref_translation_pause_hot),
+                    subtitle = stringResource(MR.strings.pref_translation_pause_hot_summary),
+                ),
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.translation_model_delete),
                     enabled = !busy && status.percent > 0,

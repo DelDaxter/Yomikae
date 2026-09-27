@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.PowerManager
 import androidx.lifecycle.asFlow
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
@@ -26,6 +27,7 @@ import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -176,6 +178,7 @@ class ChapterTranslationJob(
                     sourceLanguage,
                     targetLanguage,
                     freshMemory,
+                    item.chapterId,
                 )
             }
             val page =
@@ -209,13 +212,18 @@ class ChapterTranslationJob(
         sourceLanguage: String,
         targetLanguage: String,
         memory: SeriesMemory,
+        chapterId: Long,
     ): TextTranslator {
         val backend = when (preferences.engine.get()) {
             TextTranslator.ENGINE_LOCAL -> LocalLlmBackend(
                 context,
                 useGpu = preferences.localLlmGpu.get(),
                 onDownloadProgress = { name, done, total ->
+                    val percent = if (total > 0) (done * 100 / total).toInt() else 0
                     logcat { "Model $name: ${done / 1_000_000} / ${total / 1_000_000} MB" }
+                    val stage = context.stringResource(MR.strings.translation_stage_model_download, percent)
+                    queue.markStage(chapterId, stage)
+                    showStage(stage)
                 },
             )
             TextTranslator.ENGINE_LLM -> HttpLlmBackend(
@@ -274,6 +282,7 @@ class ChapterTranslationJob(
                     if (!queue.isCancelled(chapter.id)) queue.markPending(chapter.id)
                     return false
                 }
+                waitWhileTooHot(chapter.id)
                 showProgress(chapter.name, index + 1, pages.size)
 
                 val target = store.pageFile(chapter.id, page.index, variant)
@@ -338,6 +347,38 @@ class ChapterTranslationJob(
         return Unit
     }
 
+    /**
+     * Yomikae: a long GPU run heats the phone until Android throttles it (pages then take
+     * three times longer). Above the "severe" level the job waits, checking every few
+     * seconds, until the phone is back to "moderate" at most. Off with the setting.
+     */
+    private suspend fun waitWhileTooHot(chapterId: Long) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || !preferences.pauseWhenHot.get()) return
+        val power = context.getSystemService(PowerManager::class.java) ?: return
+        if (power.currentThermalStatus < PowerManager.THERMAL_STATUS_SEVERE) return
+        val stage = context.stringResource(MR.strings.translation_stage_too_hot)
+        queue.markStage(chapterId, stage)
+        showStage(stage)
+        logcat { "Translation paused: thermal status ${power.currentThermalStatus}" }
+        while (power.currentThermalStatus > PowerManager.THERMAL_STATUS_MODERATE) {
+            if (isStopped || queue.isCancelled(chapterId)) return
+            delay(THERMAL_CHECK_MILLIS)
+        }
+        queue.markStage(chapterId, null)
+    }
+
+    private fun showStage(stage: String) {
+        context.notify(ID_TRANSLATION_PROGRESS, Notifications.CHANNEL_DOWNLOADER_PROGRESS) {
+            setContentTitle(context.stringResource(MR.strings.translation_notifier_title))
+            setContentText(stage)
+            setSmallIcon(R.drawable.ic_translate_24dp)
+            setContentIntent(openQueuePendingIntent(context))
+            setProgress(0, 0, true)
+            setOngoing(true)
+            setOnlyAlertOnce(true)
+        }
+    }
+
     private fun showProgress(chapterName: String, current: Int, total: Int) {
         context.notify(ID_TRANSLATION_PROGRESS, Notifications.CHANNEL_DOWNLOADER_PROGRESS) {
             setContentTitle(context.stringResource(MR.strings.translation_notifier_title))
@@ -369,6 +410,7 @@ class ChapterTranslationJob(
     companion object {
         private const val TAG = "ChapterTranslation"
         const val MODE_TRANSLATE = "translate"
+        private const val THERMAL_CHECK_MILLIS = 15_000L
         const val MODE_EXTRACT = "extract"
 
         /** Output folder of the extract mode: the human text of a translated edition. */

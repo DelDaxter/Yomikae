@@ -6,10 +6,13 @@ import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.SamplerConfig
+import eu.kanade.tachiyomi.util.system.connectivityManager
 import logcat.LogPriority
 import mihon.feature.translation.ocr.ModelDownloader
+import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
+import tachiyomi.i18n.MR
 
 /**
  * Yomikae: the translation model running inside the app, through Google's LiteRT-LM runtime
@@ -38,6 +41,10 @@ class LocalLlmBackend(
     private var engine: Engine? = null
 
     override suspend fun prepare() {
+        // The model is downloaded once, and never silently on a metered connection.
+        if (!downloader.isReady(GROUP, listOf(MODEL)) && context.connectivityManager.isActiveNetworkMetered) {
+            error(context.stringResource(MR.strings.translation_model_needs_wifi))
+        }
         downloader.ensure(GROUP, listOf(MODEL), onDownloadProgress)
         val path = downloader.file(GROUP, MODEL).path
         withIOContext {

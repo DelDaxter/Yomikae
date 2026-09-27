@@ -221,7 +221,9 @@ class ReaderViewModel(
             }
         if (others.isEmpty()) return own
         val rawLanguage = translationPreferences.sourceLanguage.get()
-        val infos = (others.map { it.first } + manga).associate { m ->
+        val order = (listOf(group.primaryMangaId) + group.memberIds).withIndex().associate { it.value to it.index }
+        val mangasById = (others.map { it.first } + manga).associateBy { it.id }
+        val infos = mangasById.values.associate { m ->
             val source = sourceManager.getOrStub(m.source)
             val memory = seriesMemoryStore.load(m.id)
             m.id to MergedChapters.Member(
@@ -234,6 +236,7 @@ class ReaderViewModel(
                 ),
                 sourceName = source.name,
                 numberOffset = memory.referenceOffset,
+                order = order[m.id] ?: Int.MAX_VALUE,
             )
         }
         return MergedChapters.merge(
@@ -244,6 +247,17 @@ class ReaderViewModel(
             isTranslated = translationStore::isChapterTranslated,
             translatedLabel = "",
             preferredChapterId = selectedChapterId,
+            isDownloaded = { chapter ->
+                val owner = mangasById[chapter.mangaId]
+                owner != null &&
+                    downloadManager.isChapterDownloaded(
+                        chapter.name,
+                        chapter.scanlator,
+                        chapter.url,
+                        owner.title,
+                        owner.source,
+                    )
+            },
         ).map { it.chapter }
     }
 

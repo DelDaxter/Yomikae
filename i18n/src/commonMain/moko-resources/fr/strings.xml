@@ -983,6 +983,11 @@
     <string name="translation_queue_empty">Aucune traduction en cours</string>
     <string name="translation_queue_status_pending">En attente</string>
     <string name="translation_queue_status_running">Traduction de la page %1$d sur %2$d</string>
+    <string name="translation_stage_model_download">Téléchargement du modèle de traduction… %1$d %%</string>
+    <string name="translation_stage_too_hot">En pause : le téléphone chauffe, reprise quand il refroidit</string>
+    <string name="translation_model_needs_wifi">Le modèle de traduction (1,8 Go) n\'est pas encore téléchargé. Connecte-toi en Wi-Fi, ou télécharge-le depuis Paramètres › Traduction.</string>
+    <string name="pref_translation_pause_hot">Pause quand le téléphone chauffe</string>
+    <string name="pref_translation_pause_hot_summary">Android bride fortement un téléphone chaud ; attendre un peu va plus vite au final</string>
     <string name="translation_queue_status_done">Terminé</string>
     <string name="translation_queue_status_error">Échec</string>
     <string name="translation_queue_status_cancelled">Annulé</string>

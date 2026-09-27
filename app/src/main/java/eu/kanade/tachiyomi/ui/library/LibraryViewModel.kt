@@ -46,6 +46,9 @@ import mihon.core.common.utils.mutate
 import mihon.domain.library.model.search.QueryNode
 import mihon.feature.library.matches
 import mihon.feature.merge.MangaGroupStore
+import mihon.feature.merge.MergedChapters
+import mihon.feature.translation.TranslationPreferences
+import mihon.feature.translation.memory.SeriesMemoryStore
 import tachiyomi.core.common.preference.CheckboxState
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.util.lang.compareToWithCollator
@@ -95,6 +98,8 @@ class LibraryViewModel(
     private val downloadCache: DownloadCache,
     private val trackerManager: TrackerManager,
     private val groupStore: MangaGroupStore,
+    private val seriesMemoryStore: SeriesMemoryStore,
+    private val translationPreferences: TranslationPreferences,
 ) : ViewModel() {
 
     private val searchQuery = MutableStateFlow<String?>(null)
@@ -401,6 +406,32 @@ class LibraryViewModel(
         }
     }
 
+    /**
+     * Yomikae: for each unified entry, the title of the group's edition in the reading language
+     * when the primary is not in that language (same rule as the series page).
+     */
+    private suspend fun unifiedDisplayTitles(groups: List<MangaGroupStore.Group>, all: List<Manga>): Map<Long, String> {
+        if (groups.isEmpty()) return emptyMap()
+        val byId = all.associateBy { it.id }
+        val target = translationPreferences.targetLanguage.get()
+        val raw = translationPreferences.sourceLanguage.get()
+        suspend fun languageOf(manga: Manga): String? {
+            val source = sourceManager.getOrStub(manga.source)
+            val hasReference = seriesMemoryStore.load(manga.id).referenceMangaId != null
+            return MergedChapters.entryLanguage(manga.title, source.lang, hasReference, raw)
+        }
+        val result = HashMap<Long, String>()
+        for (group in groups) {
+            val primary = byId[group.primaryMangaId] ?: continue
+            if (languageOf(primary) == target) continue
+            val other = group.memberIds.mapNotNull { byId[it] }.firstOrNull { languageOf(it) == target } ?: continue
+            if (other.title.isNotBlank() && !other.title.equals(primary.title, ignoreCase = true)) {
+                result[primary.id] = other.title
+            }
+        }
+        return result
+    }
+
     private fun getFavoritesFlow(): Flow<List<LibraryItem>> {
         return combine(
             getLibraryManga.subscribe(),
@@ -410,15 +441,19 @@ class LibraryViewModel(
         ) { libraryManga, preferences, _, groups ->
             // Yomikae: entries merged into a unified entry stay out of the library grid.
             val hidden = groupStore.memberIds(groups)
+            val unified = groups.associate { it.primaryMangaId to it.memberIds.size + 1 }
+            val displayTitles = unifiedDisplayTitles(groups, libraryManga.map { it.manga })
             libraryManga.filterNot { it.manga.id in hidden }.map { manga ->
                 LibraryItem(
                     libraryManga = manga,
+                    displayTitle = displayTitles[manga.manga.id],
                     downloadCount = downloadManager.getDownloadCount(manga.manga),
                     unreadCount = manga.unreadCount,
                     isLocal = manga.manga.isLocal(),
                     sourceName = sourceManager.getOrStub(manga.manga.source).name.lowercase(),
                     sourceLanguage = sourceManager.getOrStub(manga.manga.source).lang,
                     badges = LibraryItem.Badges(
+                        unifiedCount = unified[manga.manga.id] ?: 0,
                         downloadCount = if (preferences.downloadBadge) {
                             downloadManager.getDownloadCount(manga.manga)
                         } else {

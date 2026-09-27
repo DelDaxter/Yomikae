@@ -45,7 +45,7 @@ internal fun LibraryList(
             val manga = libraryItem.libraryManga.manga
             MangaListItem(
                 isSelected = manga.id in selection,
-                title = manga.title,
+                title = libraryItem.displayTitle ?: manga.title,
                 coverData = MangaCover(
                     mangaId = manga.id,
                     sourceId = manga.source,
@@ -56,6 +56,7 @@ internal fun LibraryList(
                 badge = {
                     DownloadsBadge(count = libraryItem.badges.downloadCount)
                     UnreadBadge(count = libraryItem.badges.unreadCount)
+                    UnifiedBadge(count = libraryItem.badges.unifiedCount)
                     LanguageBadge(
                         isLocal = libraryItem.badges.isLocal,
                         sourceLanguage = libraryItem.badges.sourceLanguage,

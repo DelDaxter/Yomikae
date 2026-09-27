@@ -29,7 +29,7 @@ class TranslationPreferences(
     val showTranslated: Preference<Boolean> = preferenceStore.getBoolean("translation_show_translated", true)
 
     /** Which [TextTranslator] does the translating: [TextTranslator.ENGINE_MLKIT] or [TextTranslator.ENGINE_LLM]. */
-    val engine: Preference<String> = preferenceStore.getString("translation_engine", TextTranslator.ENGINE_MLKIT)
+    val engine: Preference<String> = preferenceStore.getString("translation_engine", TextTranslator.ENGINE_LOCAL)
 
     /** Which [mihon.feature.translation.ocr.OcrEngine] reads the pages: "mlkit" or "paddle". */
     val ocrEngine: Preference<String> = preferenceStore.getString("translation_ocr_engine", OcrEngine.ENGINE_PADDLE)
@@ -42,6 +42,9 @@ class TranslationPreferences(
 
     /** Free text given to the LLM as background: series, tone, names. */
     val llmBackground: Preference<String> = preferenceStore.getString("translation_llm_background", "")
+
+    /** Pause the translation while Android reports the phone as too hot. */
+    val pauseWhenHot: Preference<Boolean> = preferenceStore.getBoolean("translation_pause_when_hot", true)
 
     /** Run the embedded model on the GPU (faster, falls back to CPU when the driver refuses). */
     val localLlmGpu: Preference<Boolean> = preferenceStore.getBoolean("translation_local_llm_gpu", true)

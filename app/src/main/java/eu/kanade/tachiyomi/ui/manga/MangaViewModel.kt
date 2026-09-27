@@ -660,6 +660,7 @@ class MangaViewModel(
         val mangas = (members.map { it.first } + manga).associateBy { it.id }
         groupMangas = mangas
         val rawLanguage = translationPreferences.sourceLanguage.get()
+        val order = (listOf(manga.id) + members.map { it.first.id }).withIndex().associate { it.value to it.index }
         val infos = mangas.values.associate { m ->
             val source = sourceManager.getOrStub(m.source)
             val memory = seriesMemoryStore.load(m.id)
@@ -673,6 +674,7 @@ class MangaViewModel(
                 ),
                 sourceName = source.name,
                 numberOffset = memory.referenceOffset,
+                order = order[m.id] ?: Int.MAX_VALUE,
             )
         }
         val target = translationPreferences.targetLanguage.get()
@@ -701,6 +703,17 @@ class MangaViewModel(
             sourceLanguage = translationPreferences.sourceLanguage.get(),
             isTranslated = translationStore::isChapterTranslated,
             translatedLabel = context.stringResource(MR.strings.merge_translated_label),
+            isDownloaded = { chapter ->
+                val owner = mangas[chapter.mangaId]
+                owner != null && !owner.isLocal() &&
+                    downloadManager.isChapterDownloaded(
+                        chapter.name,
+                        chapter.scanlator,
+                        chapter.url,
+                        owner.title,
+                        owner.source,
+                    )
+            },
         )
         val items = rows.map { it.chapter }.toChapterListItems { id -> mangas[id] ?: manga }
         return items.zip(rows) { item, row -> item.copy(sourceLabel = row.label, translatable = !row.inTargetLanguage) }

@@ -35,7 +35,7 @@ internal fun LibraryComfortableGrid(
             val manga = libraryItem.libraryManga.manga
             MangaComfortableGridItem(
                 isSelected = manga.id in selection,
-                title = manga.title,
+                title = libraryItem.displayTitle ?: manga.title,
                 coverData = MangaCover(
                     mangaId = manga.id,
                     sourceId = manga.source,
@@ -48,6 +48,7 @@ internal fun LibraryComfortableGrid(
                     UnreadBadge(count = libraryItem.badges.unreadCount)
                 },
                 coverBadgeEnd = {
+                    UnifiedBadge(count = libraryItem.badges.unifiedCount)
                     LanguageBadge(
                         isLocal = libraryItem.badges.isLocal,
                         sourceLanguage = libraryItem.badges.sourceLanguage,

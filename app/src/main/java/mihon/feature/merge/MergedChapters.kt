@@ -26,6 +26,8 @@ object MergedChapters {
         val sourceName: String,
         /** Added to this entry's chapter numbers before matching (editions numbered differently). */
         val numberOffset: Double = 0.0,
+        /** Position in the group (primary first, then the members in the order they were added). */
+        val order: Int = 0,
     )
 
     /**
@@ -65,6 +67,8 @@ object MergedChapters {
         translatedLabel: String,
         /** A chapter that must stay in the list whatever its rank (the one being read). */
         preferredChapterId: Long? = null,
+        /** Between two versions of the same rank, a downloaded one comes first. */
+        isDownloaded: (Chapter) -> Boolean = { false },
     ): List<Row> {
         class Candidate(val chapter: Chapter, val member: Member, val rank: Int)
 
@@ -84,7 +88,14 @@ object MergedChapters {
         }
 
         val rows = byKey.values.map { candidates ->
-            val best = candidates.minByOrNull { it.rank }!!
+            // Same rank (two English sources, two raws): the downloaded one, then the version
+            // already started, then the order of the entries in the group.
+            val best = candidates.sortedWith(
+                compareBy<Candidate> { it.rank }
+                    .thenByDescending { isDownloaded(it.chapter) }
+                    .thenByDescending { it.chapter.read || it.chapter.lastPageRead > 0 }
+                    .thenBy { it.member.order },
+            ).first()
             val read = candidates.any { it.chapter.read }
             val label = buildString {
                 append(best.member.language?.uppercase(Locale.ROOT) ?: "?")

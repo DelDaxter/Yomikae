@@ -196,7 +196,7 @@ private fun QueueRow(
     }
     val statusText = when (item.status) {
         TranslationQueue.Status.PENDING -> stringResource(MR.strings.translation_queue_status_pending)
-        TranslationQueue.Status.RUNNING -> stringResource(
+        TranslationQueue.Status.RUNNING -> item.stage ?: stringResource(
             MR.strings.translation_queue_status_running,
             item.page,
             item.pageCount,

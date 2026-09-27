@@ -42,6 +42,8 @@ class TranslationQueue(
         val error: String? = null,
         /** Set by "translate now": the running chapter yields after its current page. */
         val urgent: Boolean = false,
+        /** What the job is doing besides translating pages: model download, thermal pause. */
+        val stage: String? = null,
     )
 
     /** Timing statistics used for the "time left" estimate. */
@@ -168,11 +170,18 @@ class TranslationQueue(
     }
 
     fun markRunning(chapterId: Long, pageCount: Int) {
-        updateItem(chapterId) { it.copy(status = Status.RUNNING, pageCount = pageCount, error = null, urgent = false) }
+        updateItem(chapterId) {
+            it.copy(status = Status.RUNNING, pageCount = pageCount, error = null, urgent = false, stage = null)
+        }
+    }
+
+    /** Shown on the item instead of the page counter while set; null clears it. */
+    fun markStage(chapterId: Long, stage: String?) {
+        updateItem(chapterId) { it.copy(status = Status.RUNNING, stage = stage) }
     }
 
     fun markPage(chapterId: Long, page: Int, pageMillis: Long?) {
-        updateItem(chapterId) { it.copy(page = page) }
+        updateItem(chapterId) { it.copy(page = page, stage = null) }
         if (pageMillis != null) {
             _stats.update { it.copy(pagesDone = it.pagesDone + 1, totalMillis = it.totalMillis + pageMillis) }
         }

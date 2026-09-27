@@ -1191,6 +1191,11 @@
     <string name="translation_queue_empty">No translation in progress</string>
     <string name="translation_queue_status_pending">Waiting</string>
     <string name="translation_queue_status_running">Translating page %1$d of %2$d</string>
+    <string name="translation_stage_model_download">Downloading the translation model… %1$d%%</string>
+    <string name="translation_stage_too_hot">Paused: the phone is too hot, resuming when it cools down</string>
+    <string name="translation_model_needs_wifi">The translation model (1.8 GB) is not downloaded yet. Connect to Wi-Fi, or download it from Settings › Translation.</string>
+    <string name="pref_translation_pause_hot">Pause when the phone gets hot</string>
+    <string name="pref_translation_pause_hot_summary">Android slows a hot phone down a lot; waiting a little is faster in the end</string>
     <string name="translation_queue_status_done">Done</string>
     <string name="translation_queue_status_error">Failed</string>
     <string name="translation_queue_status_cancelled">Cancelled</string>
