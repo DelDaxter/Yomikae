@@ -55,6 +55,16 @@ object SettingsTranslationScreen : SearchableSettings {
                 title = stringResource(MR.strings.pref_translation_show),
                 subtitle = stringResource(MR.strings.pref_translation_show_summary),
             ),
+            Preference.PreferenceItem.SwitchPreference(
+                preference = preferences.prefetchWhileReading,
+                title = stringResource(MR.strings.pref_translation_prefetch),
+                subtitle = stringResource(MR.strings.pref_translation_prefetch_summary),
+            ),
+            Preference.PreferenceItem.SwitchPreference(
+                preference = preferences.autoTranslateDownloads,
+                title = stringResource(MR.strings.pref_translation_auto_downloads),
+                subtitle = stringResource(MR.strings.pref_translation_auto_downloads_summary),
+            ),
             Preference.PreferenceGroup(
                 title = stringResource(MR.strings.pref_translation_group_engines),
                 preferenceItems = listOf(

@@ -56,6 +56,7 @@ import logcat.LogPriority
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.feature.translation.memory.SeriesMemoryScreen
+import mihon.feature.translation.ui.AutoTranslateDialog
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.chapter.model.Chapter
@@ -121,6 +122,7 @@ class MangaScreen(
                 !successState.source.isLocalOrStub()
             },
             onSeriesMemoryClicked = { navigator.push(SeriesMemoryScreen(successState.manga.id)) },
+            onAutoTranslateClicked = viewModel::showAutoTranslateDialog,
             onAddToLibraryClicked = {
                 viewModel.toggleFavorite()
                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -268,6 +270,17 @@ class MangaScreen(
                 } else {
                     LoadingScreen(Modifier.systemBarsPadding())
                 }
+            }
+            is MangaViewModel.Dialog.AutoTranslate -> {
+                AutoTranslateDialog(
+                    current = viewModel.autoTranslateMode(dialog.manga.id),
+                    globalEnabled = viewModel.autoTranslateGlobal(),
+                    onDismissRequest = onDismissRequest,
+                    onSelected = { mode ->
+                        viewModel.setAutoTranslateMode(dialog.manga.id, mode)
+                        onDismissRequest()
+                    },
+                )
             }
             is MangaViewModel.Dialog.SetFetchInterval -> {
                 SetIntervalDialog(

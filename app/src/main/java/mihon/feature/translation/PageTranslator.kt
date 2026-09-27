@@ -60,18 +60,47 @@ class PageTranslator(
      * translating (the caller then keeps the original).
      */
     suspend fun translatePage(imageBytes: ByteArray): Result? {
+        val prepared = read(imageBytes) ?: return null
+        return finish(prepared)
+    }
+
+    /** A page read but not translated yet: the OCR result and the bitmap kept for the rendering. */
+    class Prepared internal constructor(
+        internal val bitmap: Bitmap,
+        internal val blocks: List<OcrBlock>,
+        internal val ocrMillis: Long,
+    ) {
+        fun recycle() = bitmap.recycle()
+    }
+
+    /**
+     * Decodes and reads the page (OCR, noise filters, bubble merge). This part runs on the CPU,
+     * so the job overlaps it with the translation of the previous page, which runs on the GPU.
+     */
+    suspend fun read(imageBytes: ByteArray): Prepared? {
         val bitmap = decode(imageBytes) ?: return null
         try {
+            val t0 = System.currentTimeMillis()
             // Drop watermarks and stray marks, then glue the pieces of one bubble back together:
             // ML Kit often splits a bubble into two blocks, which breaks both the context given
             // to the translator and the rendering (two text sizes in one bubble).
-            val t0 = System.currentTimeMillis()
             val blocks = mergeBubbleBlocks(
                 recognize(bitmap).filterNot { isNoise(it.text) || isCornerStamp(it, bitmap.width, bitmap.height) },
             )
-            val ocrMillis = System.currentTimeMillis() - t0
+            return Prepared(bitmap, blocks, System.currentTimeMillis() - t0)
+        } catch (e: Throwable) {
+            bitmap.recycle()
+            throw e
+        }
+    }
+
+    /** Translates and renders a page prepared by [read]. Always releases the bitmap. */
+    suspend fun finish(prepared: Prepared): Result? {
+        val bitmap = prepared.bitmap
+        try {
+            val blocks = prepared.blocks
             if (blocks.isEmpty()) {
-                logcat { "Translation: timings ocr=${ocrMillis}ms, no text" }
+                logcat { "Translation: timings ocr=${prepared.ocrMillis}ms, no text" }
                 return Result(null, bitmap.width, bitmap.height, emptyList())
             }
 
@@ -79,7 +108,9 @@ class PageTranslator(
             val t1 = System.currentTimeMillis()
             val texts = translator.translate(blocks.map { it.text })
             val llmMillis = System.currentTimeMillis() - t1
-            logcat { "Translation: timings ocr=${ocrMillis}ms translate=${llmMillis}ms for ${blocks.size} blocks" }
+            logcat {
+                "Translation: timings ocr=${prepared.ocrMillis}ms translate=${llmMillis}ms for ${blocks.size} blocks"
+            }
             val pairs = blocks.zip(texts) { block, text ->
                 TranslatedBlock(block.text, text, block.box.left, block.box.top, block.box.right, block.box.bottom)
             }

@@ -45,6 +45,41 @@ class TranslationPreferences(
     /** Run the embedded model on the GPU (faster, falls back to CPU when the driver refuses). */
     val localLlmGpu: Preference<Boolean> = preferenceStore.getBoolean("translation_local_llm_gpu", true)
 
+    /** While reading, the current and the next downloaded chapters are translated in the background. */
+    val prefetchWhileReading: Preference<Boolean> = preferenceStore.getBoolean("translation_prefetch", true)
+
+    /** Global default: every finished download is queued for translation. */
+    val autoTranslateDownloads: Preference<Boolean> = preferenceStore.getBoolean("translation_auto_downloads", false)
+
+    /** Series that always / never translate their downloads, whatever the global default. */
+    private val autoTranslateOn: Preference<Set<String>> = preferenceStore.getStringSet("translation_auto_on")
+    private val autoTranslateOff: Preference<Set<String>> = preferenceStore.getStringSet("translation_auto_off")
+
+    /** Per-series choice for "translate new downloads". */
+    enum class AutoMode { DEFAULT, ON, OFF }
+
+    fun autoTranslateMode(mangaId: Long): AutoMode {
+        val key = mangaId.toString()
+        return when {
+            key in autoTranslateOn.get() -> AutoMode.ON
+            key in autoTranslateOff.get() -> AutoMode.OFF
+            else -> AutoMode.DEFAULT
+        }
+    }
+
+    fun setAutoTranslateMode(mangaId: Long, mode: AutoMode) {
+        val key = mangaId.toString()
+        autoTranslateOn.set(if (mode == AutoMode.ON) autoTranslateOn.get() + key else autoTranslateOn.get() - key)
+        autoTranslateOff.set(if (mode == AutoMode.OFF) autoTranslateOff.get() + key else autoTranslateOff.get() - key)
+    }
+
+    /** Should a chapter of this series be translated as soon as it is downloaded? */
+    fun autoTranslateFor(mangaId: Long): Boolean = when (autoTranslateMode(mangaId)) {
+        AutoMode.ON -> true
+        AutoMode.OFF -> false
+        AutoMode.DEFAULT -> autoTranslateDownloads.get()
+    }
+
     companion object {
         val SOURCE_LANGUAGES = listOf("ko", "ja", "en")
         val TARGET_LANGUAGES = listOf("en", "fr")

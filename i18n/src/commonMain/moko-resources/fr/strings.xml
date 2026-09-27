@@ -910,6 +910,17 @@
     <string name="translation_ocr_mlkit">Google ML Kit (intégré, rapide)</string>
     <string name="translation_ocr_paddle">PaddleOCR v5 coréen (télécharge 18 Mo, plus précis)</string>
     <string name="action_series_memory">Mémoire de série</string>
+    <string name="action_auto_translate">Traduction automatique…</string>
+    <string name="auto_translate_title">Traduire les nouveaux téléchargements de cette série</string>
+    <string name="auto_translate_default">Suivre le réglage global (%1$s)</string>
+    <string name="auto_translate_on">Toujours</string>
+    <string name="auto_translate_off">Jamais</string>
+    <string name="auto_translate_state_on">activé</string>
+    <string name="auto_translate_state_off">désactivé</string>
+    <string name="pref_translation_prefetch">Traduire pendant la lecture</string>
+    <string name="pref_translation_prefetch_summary">Le chapitre en cours et le suivant sont traduits en arrière-plan s\'ils sont téléchargés</string>
+    <string name="pref_translation_auto_downloads">Traduire les nouveaux téléchargements</string>
+    <string name="pref_translation_auto_downloads_summary">Chaque chapitre téléchargé est mis en file de traduction. Chaque série peut décider autrement depuis sa fiche.</string>
     <string name="series_memory_title">Mémoire de série</string>
     <string name="series_memory_reference">Édition de référence (déjà traduite)</string>
     <string name="series_memory_reference_none">Aucune. Choisis la même série dans ta bibliothèque, traduite par des humains.</string>

@@ -26,6 +26,10 @@ import eu.kanade.tachiyomi.util.system.notificationBuilder
 import eu.kanade.tachiyomi.util.system.notify
 import eu.kanade.tachiyomi.util.system.setForegroundSafely
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -262,46 +266,58 @@ class ChapterTranslationJob(
 
             val dir = store.chapterDir(chapter.id, variant).apply { mkdirs() }
 
-            pages.forEachIndexed { index, page ->
-                if (isStopped || queue.shouldYield(chapter.id)) {
-                    if (!queue.isCancelled(chapter.id)) queue.markPending(chapter.id)
-                    return false
+            // The OCR of page N+1 (CPU) runs while page N is being translated (GPU or network).
+            val finished = coroutineScope {
+                /** Reads a page ahead of time; null when there is nothing to read for it. */
+                fun readAhead(index: Int): Deferred<PageTranslator.Prepared?>? {
+                    val page = pages.getOrNull(index) ?: return null
+                    if (store.pageFile(chapter.id, page.index, variant).exists()) return null
+                    val openStream = page.stream ?: return null
+                    return async(Dispatchers.IO) {
+                        // Read the whole page once, like the reader does, then work from memory.
+                        translator.read(openStream().use { it.readBytes() })
+                    }
                 }
-                showProgress(chapter.name, index + 1, pages.size)
 
-                val target = store.pageFile(chapter.id, page.index, variant)
-                if (target.exists()) {
-                    queue.markPage(chapter.id, index + 1, pageMillis = null)
-                    return@forEachIndexed
-                }
-
-                val started = System.currentTimeMillis()
-                val openStream = page.stream ?: return@forEachIndexed
-                // Read the whole page once, like the reader does, then work from memory.
-                val imageBytes = openStream().use { it.readBytes() }
-                val result = translator.translatePage(imageBytes)
-                val jpeg = result?.jpeg
+                var ahead: Deferred<PageTranslator.Prepared?>? = null
                 try {
-                    if (jpeg != null) {
-                        val tmp = File(dir, target.name + ".tmp")
-                        tmp.writeBytes(jpeg)
-                        if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
+                    for ((index, page) in pages.withIndex()) {
+                        if (isStopped || queue.shouldYield(chapter.id)) {
+                            if (!queue.isCancelled(chapter.id)) queue.markPending(chapter.id)
+                            return@coroutineScope false
+                        }
+                        showProgress(chapter.name, index + 1, pages.size)
+
+                        val target = store.pageFile(chapter.id, page.index, variant)
+                        if (target.exists()) {
+                            queue.markPage(chapter.id, index + 1, pageMillis = null)
+                            continue
+                        }
+
+                        val started = System.currentTimeMillis()
+                        val prepared = ahead?.await() ?: run {
+                            val openStream = page.stream ?: return@run null
+                            translator.read(openStream().use { it.readBytes() })
+                        }
+                        ahead = readAhead(index + 1)
+                        val result = prepared?.let { translator.finish(it) }
+                        writePage(dir, target, page.index, result, chapter, queue.isCancelled(chapter.id))
+                            ?: return@coroutineScope false
+                        val elapsed = System.currentTimeMillis() - started
+                        logcat {
+                            "Translation: page ${page.index} done in $elapsed ms (${result?.jpeg?.size ?: 0} bytes)"
+                        }
+                        queue.markPage(chapter.id, index + 1, elapsed)
                     }
-                    if (result != null) {
-                        // Text sidecar: what was read and how it was translated, for evaluation and
-                        // for building per-series glossaries later.
-                        val sidecar = PageSidecar(page.index, result.width, result.height, result.blocks)
-                        File(dir, "%03d.json".format(page.index)).writeText(json.encodeToString(sidecar))
+                    true
+                } finally {
+                    ahead?.let { pending ->
+                        pending.cancel()
+                        runCatching { pending.await()?.recycle() }
                     }
-                } catch (e: Exception) {
-                    // "Remove" deletes the chapter folder while a page is in flight: not an error.
-                    if (queue.isCancelled(chapter.id)) return false
-                    throw e
                 }
-                val elapsed = System.currentTimeMillis() - started
-                logcat { "Translation: page ${page.index} done in $elapsed ms (${jpeg?.size ?: 0} bytes)" }
-                queue.markPage(chapter.id, index + 1, elapsed)
             }
+            if (!finished) return false
 
             if (isStopped) {
                 queue.markPending(chapter.id)
@@ -313,6 +329,39 @@ class ChapterTranslationJob(
         } finally {
             loader.recycle()
         }
+    }
+
+    /**
+     * Stores the translated page and its text sidecar. Returns null when the chapter was removed
+     * from the queue while the page was in flight (its folder is gone, that is not an error).
+     */
+    private fun writePage(
+        dir: File,
+        target: File,
+        pageIndex: Int,
+        result: PageTranslator.Result?,
+        chapter: Chapter,
+        cancelled: Boolean,
+    ): Unit? {
+        val jpeg = result?.jpeg
+        try {
+            if (jpeg != null) {
+                val tmp = File(dir, target.name + ".tmp")
+                tmp.writeBytes(jpeg)
+                if (!tmp.renameTo(target)) error("Cannot write ${target.name}")
+            }
+            if (result != null) {
+                // Text sidecar: what was read and how it was translated, for evaluation and
+                // for building per-series glossaries later.
+                val sidecar = PageSidecar(pageIndex, result.width, result.height, result.blocks)
+                File(dir, "%03d.json".format(pageIndex)).writeText(json.encodeToString(sidecar))
+            }
+        } catch (e: Exception) {
+            // "Remove" deletes the chapter folder while a page is in flight: not an error.
+            if (cancelled || queue.isCancelled(chapter.id)) return null
+            throw e
+        }
+        return Unit
     }
 
     private fun showProgress(chapterName: String, current: Int, total: Int) {

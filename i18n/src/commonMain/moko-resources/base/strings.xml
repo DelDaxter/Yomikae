@@ -1118,6 +1118,17 @@
     <string name="translation_ocr_mlkit">Google ML Kit (bundled, fast)</string>
     <string name="translation_ocr_paddle">PaddleOCR v5 Korean (downloads 18 MB, more accurate)</string>
     <string name="action_series_memory">Series memory</string>
+    <string name="action_auto_translate">Automatic translation…</string>
+    <string name="auto_translate_title">Translate new downloads of this series</string>
+    <string name="auto_translate_default">Follow the global setting (%1$s)</string>
+    <string name="auto_translate_on">Always</string>
+    <string name="auto_translate_off">Never</string>
+    <string name="auto_translate_state_on">on</string>
+    <string name="auto_translate_state_off">off</string>
+    <string name="pref_translation_prefetch">Translate while reading</string>
+    <string name="pref_translation_prefetch_summary">The chapter being read and the next one are translated in the background when they are downloaded</string>
+    <string name="pref_translation_auto_downloads">Translate new downloads</string>
+    <string name="pref_translation_auto_downloads_summary">Every downloaded chapter is queued for translation. Each series can override this from its page.</string>
     <string name="series_memory_title">Series memory</string>
     <string name="series_memory_reference">Reference edition (already translated)</string>
     <string name="series_memory_reference_none">None. Pick the same series in your library, translated by humans.</string>

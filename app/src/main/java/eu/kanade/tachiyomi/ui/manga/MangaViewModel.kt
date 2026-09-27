@@ -61,6 +61,7 @@ import logcat.LogPriority
 import mihon.domain.chapter.interactor.FilterChaptersForDownload
 import mihon.domain.source.interactor.UpdateMangaFromRemote
 import mihon.feature.translation.ChapterTranslationJob
+import mihon.feature.translation.TranslationPreferences
 import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationState
 import mihon.feature.translation.TranslationStore
@@ -130,6 +131,7 @@ class MangaViewModel(
     private val coverCache: CoverCache,
     private val translationStore: TranslationStore,
     private val translationQueue: TranslationQueue,
+    private val translationPreferences: TranslationPreferences,
 ) : ViewModel() {
 
     val state: StateFlow<MangaViewModel.State>
@@ -414,6 +416,22 @@ class MangaViewModel(
                 )
             }
         }
+    }
+
+    // Yomikae: per-series "translate new downloads"
+    fun showAutoTranslateDialog() {
+        val manga = successState?.manga ?: return
+        updateSuccessState { it.copy(dialog = Dialog.AutoTranslate(manga)) }
+    }
+
+    fun autoTranslateMode(mangaId: Long): TranslationPreferences.AutoMode = translationPreferences.autoTranslateMode(
+        mangaId,
+    )
+
+    fun autoTranslateGlobal(): Boolean = translationPreferences.autoTranslateDownloads.get()
+
+    fun setAutoTranslateMode(mangaId: Long, mode: TranslationPreferences.AutoMode) {
+        translationPreferences.setAutoTranslateMode(mangaId, mode)
     }
 
     fun showSetFetchIntervalDialog() {
@@ -1154,6 +1172,7 @@ class MangaViewModel(
         data class DuplicateManga(val manga: Manga, val duplicates: List<MangaWithChapterCount>) : Dialog
         data class Migrate(val target: Manga, val current: Manga) : Dialog
         data class SetFetchInterval(val manga: Manga) : Dialog
+        data class AutoTranslate(val manga: Manga) : Dialog
         data object SettingsSheet : Dialog
         data object TrackSheet : Dialog
         data object FullCover : Dialog

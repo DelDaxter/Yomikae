@@ -69,7 +69,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
+import mihon.feature.translation.ChapterTranslationJob
 import mihon.feature.translation.TranslationPreferences
+import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationStore
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.util.lang.launchIO
@@ -125,6 +127,7 @@ class ReaderViewModel(
     private val downloadCache: DownloadCache,
     private val translationPreferences: TranslationPreferences,
     private val translationStore: TranslationStore,
+    private val translationQueue: TranslationQueue,
 ) : ViewModel() {
 
     @AssistedFactory
@@ -498,8 +501,44 @@ class ReaderViewModel(
         if (inDownloadRange) {
             downloadNextChapters()
         }
+        translateAhead()
 
         eventChannel.trySend(Event.PageChanged)
+    }
+
+    /** Chapter for which [translateAhead] already ran, so the queue is not asked again per page. */
+    private var translateAheadDone: Long? = null
+
+    /**
+     * Yomikae: reading a downloaded chapter that has no translation yet queues it (first in
+     * line) and the next downloaded chapter after it, so the translation stays ahead of the
+     * reader. Translating a page takes a few seconds, reading it takes longer.
+     */
+    private fun translateAhead() {
+        if (!translationPreferences.prefetchWhileReading.get()) return
+        val manga = manga ?: return
+        val current = getCurrentChapter()?.chapter ?: return
+        if (translateAheadDone == current.id) return
+        translateAheadDone = current.id
+        val candidates = listOfNotNull(current, state.value.viewerChapters?.nextChapter?.chapter)
+        viewModelScope.launchIO {
+            val requests = candidates.filter { chapter ->
+                val id = chapter.id ?: return@filter false
+                translationQueue.statusOf(id) == null &&
+                    !translationStore.isChapterTranslated(id) &&
+                    downloadManager.isChapterDownloaded(
+                        chapter.name,
+                        chapter.scanlator,
+                        chapter.url,
+                        manga.title,
+                        manga.source,
+                    )
+            }.map { ChapterTranslationJob.Request(it.id!!, it.name) }
+            if (requests.isEmpty()) return@launchIO
+            ChapterTranslationJob.start(context, manga.id, manga.title, requests)
+            // The chapter on screen goes first.
+            requests.firstOrNull { it.chapterId == current.id }?.let { translationQueue.startNow(it.chapterId) }
+        }
     }
 
     private fun downloadNextChapters() {
