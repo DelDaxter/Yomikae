@@ -65,7 +65,9 @@ class PageTranslator(
             // Drop watermarks and stray marks, then glue the pieces of one bubble back together:
             // ML Kit often splits a bubble into two blocks, which breaks both the context given
             // to the translator and the rendering (two text sizes in one bubble).
-            val blocks = mergeBubbleBlocks(recognize(bitmap).filterNot { isNoise(it.text) })
+            val blocks = mergeBubbleBlocks(
+                recognize(bitmap).filterNot { isNoise(it.text) || isCornerStamp(it, bitmap.width, bitmap.height) },
+            )
             if (blocks.isEmpty()) return Result(null, bitmap.width, bitmap.height, emptyList())
 
             // The whole page goes to the engine at once, so context-aware engines can use it.
@@ -164,10 +166,41 @@ class PageTranslator(
         if (t.length < 2) return true
         if (URL_PATTERN.containsMatchIn(t)) return true
         if (WATERMARK_WORDS.any { t.contains(it) }) return true
+        if (t.length <= 8 && WATERMARK_WORDS.any { jamoSimilarity(t, it) >= 0.5f }) return true
         if (!t.any { it.isLetter() }) return true
         // A Korean page never yields a block without Hangul; such a block is a misread of
         // artwork, a logo, or a page that is not in the source language at all.
         return !hasSourceScript(t)
+    }
+
+    /**
+     * Site stamps sit in a corner of the page and are short. Dialogue never is that small
+     * and that far in a corner at the same time.
+     */
+    private fun isCornerStamp(block: OcrBlock, pageWidth: Int, pageHeight: Int): Boolean {
+        if (block.text.trim().length > 8) return false
+        val cy = block.box.centerY().toFloat() / pageHeight
+        val cx = block.box.centerX().toFloat() / pageWidth
+        val nearTopOrBottom = cy < 0.12f || cy > 0.88f
+        val nearSide = cx < 0.25f || cx > 0.75f
+        return nearTopOrBottom && nearSide && block.box.width() < pageWidth * 0.3f
+    }
+
+    /**
+     * How alike two short Korean strings sound: syllables are split into their three jamo
+     * (initial, vowel, final) and compared position by position. OCR misreads a logo as a
+     * similar-looking syllable ("짬툰" read "짧둔"), which this catches where exact matching fails.
+     */
+    private fun jamoSimilarity(a: String, b: String): Float {
+        val ja = a.filter { it in '가'..'힣' }.flatMap { jamo(it) }
+        val jb = b.filter { it in '가'..'힣' }.flatMap { jamo(it) }
+        if (ja.isEmpty() || jb.isEmpty() || ja.size != jb.size) return 0f
+        return ja.zip(jb).count { it.first == it.second }.toFloat() / ja.size
+    }
+
+    private fun jamo(syllable: Char): List<Int> {
+        val code = syllable.code - 0xAC00
+        return listOf(code / (21 * 28), (code % (21 * 28)) / 28, code % 28)
     }
 
     private fun hasSourceScript(text: String): Boolean = when (sourceLanguage) {
@@ -218,7 +251,7 @@ class PageTranslator(
         const val JPEG_QUALITY = 90
         const val MERGE_MAX_GAP_LINES = 0.8f
         const val MERGE_MIN_OVERLAP = 0.4f
-        val URL_PATTERN = Regex("""(?i)(\.com|\.net|\.org|\.kr|\.io|www\.|http)""")
+        val URL_PATTERN = Regex("""(?i)([.,]\s*c[o0][mnr]{1,2}|\.net|\.org|\.kr|\.io|www\.|http)""")
 
         /** Site logos and "read it first on..." banners that scan sites stamp on pages. */
         val WATERMARK_WORDS = listOf("뉴토끼", "구글검색", "웹툰미리보기", "웹튼미리보기", "짬툰", "마나토끼", "북토끼", "툰코", "Newtoki", "Toonkor")
