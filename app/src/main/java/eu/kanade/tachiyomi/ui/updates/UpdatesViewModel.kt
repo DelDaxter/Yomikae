@@ -23,7 +23,6 @@ import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.util.lang.toLocalDate
-import eu.kanade.tachiyomi.util.system.toast
 import eu.kanade.tachiyomi.util.system.workManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -47,7 +46,6 @@ import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 import logcat.LogPriority
-import mihon.feature.translation.ChapterTranslationJob
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.lang.launchNonCancellable
@@ -265,18 +263,6 @@ class UpdatesViewModel(
                 }
                 ChapterDownloadAction.DELETE -> {
                     deleteChapters(items)
-                }
-                ChapterDownloadAction.TRANSLATE -> {
-                    // Yomikae: one job per manga, chapters queued in order.
-                    items.groupBy { it.update.mangaId }.forEach { (mangaId, list) ->
-                        ChapterTranslationJob.start(
-                            context,
-                            mangaId,
-                            list.first().update.mangaTitle,
-                            list.map { ChapterTranslationJob.Request(it.update.chapterId, it.update.chapterName) },
-                        )
-                    }
-                    context.toast(MR.strings.translation_started)
                 }
             }
             toggleAllSelection(false)
