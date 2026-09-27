@@ -15,4 +15,11 @@ interface LlmBackend : Closeable {
 
     /** One user prompt in, the model's whole answer out. */
     suspend fun complete(prompt: String): String
+
+    /**
+     * How many series-memory pairs to put in a page prompt. Every pair costs prompt tokens,
+     * and on the phone the prompt is what takes time (prefill), so the embedded model gets
+     * fewer than a server.
+     */
+    val maxReferencePairs: Int
 }

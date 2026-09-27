@@ -33,6 +33,8 @@ class HttpLlmBackend(
 
     private val json = Json { ignoreUnknownKeys = true }
 
+    override val maxReferencePairs: Int = 60
+
     private val endpoint: String
         get() = serverUrl.trimEnd('/') + "/v1/chat/completions"
 

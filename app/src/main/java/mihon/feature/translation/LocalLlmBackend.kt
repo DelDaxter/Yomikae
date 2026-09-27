@@ -31,6 +31,9 @@ class LocalLlmBackend(
     private val onDownloadProgress: ModelDownloader.Progress? = null,
 ) : LlmBackend {
 
+    /** Measured on a Galaxy S26: 60 pairs cost about 4 s of prefill per page; 12 cost under 1 s. */
+    override val maxReferencePairs: Int = 12
+
     private val downloader = ModelDownloader(context)
     private var engine: Engine? = null
 

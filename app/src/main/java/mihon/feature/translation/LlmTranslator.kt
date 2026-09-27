@@ -56,7 +56,7 @@ class LlmTranslator(
 
     /** Whole page in one prompt; returns null for lines the model did not answer. */
     private suspend fun translateBatch(lines: List<String>): List<String?> {
-        val pairs = memory?.promptPairs(lines).orEmpty()
+        val pairs = memory?.promptPairs(lines, backend.maxReferencePairs).orEmpty()
         val prompt = buildString {
             if (pairs.isNotEmpty()) {
                 appendLine("Reference the following translations:")

@@ -65,13 +65,21 @@ class PageTranslator(
             // Drop watermarks and stray marks, then glue the pieces of one bubble back together:
             // ML Kit often splits a bubble into two blocks, which breaks both the context given
             // to the translator and the rendering (two text sizes in one bubble).
+            val t0 = System.currentTimeMillis()
             val blocks = mergeBubbleBlocks(
                 recognize(bitmap).filterNot { isNoise(it.text) || isCornerStamp(it, bitmap.width, bitmap.height) },
             )
-            if (blocks.isEmpty()) return Result(null, bitmap.width, bitmap.height, emptyList())
+            val ocrMillis = System.currentTimeMillis() - t0
+            if (blocks.isEmpty()) {
+                logcat { "Translation: timings ocr=${ocrMillis}ms, no text" }
+                return Result(null, bitmap.width, bitmap.height, emptyList())
+            }
 
             // The whole page goes to the engine at once, so context-aware engines can use it.
+            val t1 = System.currentTimeMillis()
             val texts = translator.translate(blocks.map { it.text })
+            val llmMillis = System.currentTimeMillis() - t1
+            logcat { "Translation: timings ocr=${ocrMillis}ms translate=${llmMillis}ms for ${blocks.size} blocks" }
             val pairs = blocks.zip(texts) { block, text ->
                 TranslatedBlock(block.text, text, block.box.left, block.box.top, block.box.right, block.box.bottom)
             }
