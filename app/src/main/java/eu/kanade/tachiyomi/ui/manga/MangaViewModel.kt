@@ -954,10 +954,6 @@ class MangaViewModel(
             ChapterDownloadAction.DELETE -> {
                 deleteChapters(items.map { it.chapter })
             }
-            ChapterDownloadAction.TRANSLATE -> {
-                // Yomikae: translate downloaded chapters in the background.
-                translateChapters(items.map { it.chapter })
-            }
         }
     }
 

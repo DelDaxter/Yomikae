@@ -44,7 +44,6 @@ enum class ChapterDownloadAction {
     START_NOW,
     CANCEL,
     DELETE,
-    TRANSLATE,
 }
 
 @Composable
@@ -213,13 +212,6 @@ private fun DownloadedIndicator(
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         DropdownMenu(expanded = isMenuExpanded, onDismissRequest = { isMenuExpanded = false }) {
-            DropdownMenuItem(
-                text = { Text(text = stringResource(MR.strings.action_translate)) },
-                onClick = {
-                    onClick(ChapterDownloadAction.TRANSLATE)
-                    isMenuExpanded = false
-                },
-            )
             DropdownMenuItem(
                 text = { Text(text = stringResource(MR.strings.action_delete)) },
                 onClick = {
