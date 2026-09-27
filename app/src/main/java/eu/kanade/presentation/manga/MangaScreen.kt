@@ -116,6 +116,7 @@ fun MangaScreen(
     onSeriesMemoryClicked: (() -> Unit)?,
     onAutoTranslateClicked: (() -> Unit)?,
     onMergeClicked: (() -> Unit)?,
+    onLeaveGroupClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -170,6 +171,7 @@ fun MangaScreen(
             onSeriesMemoryClicked = onSeriesMemoryClicked,
             onAutoTranslateClicked = onAutoTranslateClicked,
             onMergeClicked = onMergeClicked,
+            onLeaveGroupClicked = onLeaveGroupClicked,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -211,6 +213,7 @@ fun MangaScreen(
             onSeriesMemoryClicked = onSeriesMemoryClicked,
             onAutoTranslateClicked = onAutoTranslateClicked,
             onMergeClicked = onMergeClicked,
+            onLeaveGroupClicked = onLeaveGroupClicked,
             onEditNotesClicked = onEditNotesClicked,
             onMultiBookmarkClicked = onMultiBookmarkClicked,
             onMultiMarkAsReadClicked = onMultiMarkAsReadClicked,
@@ -262,6 +265,7 @@ private fun MangaScreenSmallImpl(
     onSeriesMemoryClicked: (() -> Unit)?,
     onAutoTranslateClicked: (() -> Unit)?,
     onMergeClicked: (() -> Unit)?,
+    onLeaveGroupClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -325,6 +329,7 @@ private fun MangaScreenSmallImpl(
                 onClickSeriesMemory = onSeriesMemoryClicked,
                 onClickAutoTranslate = onAutoTranslateClicked,
                 onClickMerge = onMergeClicked,
+                onClickLeaveGroup = onLeaveGroupClicked,
                 onClickEditNotes = onEditNotesClicked,
                 actionModeCounter = selectedChapterCount,
                 onCancelActionMode = { onAllChapterSelected(false) },
@@ -518,6 +523,7 @@ fun MangaScreenLargeImpl(
     onSeriesMemoryClicked: (() -> Unit)?,
     onAutoTranslateClicked: (() -> Unit)?,
     onMergeClicked: (() -> Unit)?,
+    onLeaveGroupClicked: (() -> Unit)?,
     onEditNotesClicked: () -> Unit,
 
     // For bottom action menu
@@ -574,6 +580,7 @@ fun MangaScreenLargeImpl(
                 onClickSeriesMemory = onSeriesMemoryClicked,
                 onClickAutoTranslate = onAutoTranslateClicked,
                 onClickMerge = onMergeClicked,
+                onClickLeaveGroup = onLeaveGroupClicked,
                 onClickEditNotes = onEditNotesClicked,
                 onCancelActionMode = { onAllChapterSelected(false) },
                 actionModeCounter = selectedChapterCount,

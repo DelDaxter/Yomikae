@@ -1120,6 +1120,9 @@
     <string name="action_series_memory">Series memory</string>
     <string name="action_auto_translate">Automatic translation…</string>
     <string name="action_merge">Unify entries…</string>
+    <string name="merge_dissolve">Unmerge</string>
+    <string name="action_leave_group">Leave the unified entry</string>
+    <string name="merge_left_group">This entry is back in the library on its own</string>
     <string name="merge_dialog_title">Unified entry</string>
     <string name="merge_dialog_hint">Tick the library entries that are the same work (other sources, other languages). They leave the library grid and their chapters appear here, in the reading language when it exists.</string>
     <string name="merge_translated_label">translated</string>

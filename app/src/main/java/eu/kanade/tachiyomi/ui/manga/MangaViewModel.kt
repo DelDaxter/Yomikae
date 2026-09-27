@@ -484,6 +484,16 @@ class MangaViewModel(
         updateSuccessState { it.copy(dialog = Dialog.AutoTranslate(manga)) }
     }
 
+    /** True when this entry is hidden behind another entry's unified entry. */
+    fun isGroupMember(mangaId: Long): Boolean = groupStore.groupOfMember(mangaId) != null
+
+    /** Takes this entry out of the unified entry it belongs to (it reappears in the library). */
+    fun leaveGroup() {
+        val manga = successState?.manga ?: return
+        groupStore.forget(manga.id)
+        context.toast(MR.strings.merge_left_group)
+    }
+
     fun autoTranslateMode(mangaId: Long): TranslationPreferences.AutoMode = translationPreferences.autoTranslateMode(
         mangaId,
     )

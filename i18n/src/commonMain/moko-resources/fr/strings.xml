@@ -912,6 +912,9 @@
     <string name="action_series_memory">Mémoire de série</string>
     <string name="action_auto_translate">Traduction automatique…</string>
     <string name="action_merge">Fiche unifiée…</string>
+    <string name="merge_dissolve">Défusionner</string>
+    <string name="action_leave_group">Quitter la fiche unifiée</string>
+    <string name="merge_left_group">Cette fiche est de nouveau seule dans la bibliothèque</string>
     <string name="merge_dialog_title">Fiche unifiée</string>
     <string name="merge_dialog_hint">Coche les fiches de la bibliothèque qui sont la même œuvre (autres sources, autres langues). Elles quittent la grille de la bibliothèque et leurs chapitres apparaissent ici, dans la langue de lecture quand elle existe.</string>
     <string name="merge_translated_label">traduit</string>
