@@ -408,6 +408,7 @@ private fun MangaScreenSmallImpl(
                             isStubSource = remember { state.source is StubSource },
                             onCoverClick = onCoverClicked,
                             doSearch = onSearch,
+                            alternativeTitle = state.alternativeTitle,
                         )
                     }
 
@@ -655,6 +656,7 @@ fun MangaScreenLargeImpl(
                             isStubSource = remember { state.source is StubSource },
                             onCoverClick = onCoverClicked,
                             doSearch = onSearch,
+                            alternativeTitle = state.alternativeTitle,
                         )
                         MangaActionRow(
                             favorite = state.manga.favorite,

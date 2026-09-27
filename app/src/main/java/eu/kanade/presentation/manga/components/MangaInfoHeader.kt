@@ -121,6 +121,8 @@ fun MangaInfoBox(
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    /** Yomikae: the other edition's title of a unified entry, under the main title. */
+    alternativeTitle: String? = null,
 ) {
     Box(modifier = modifier) {
         // Backdrop
@@ -157,6 +159,7 @@ fun MangaInfoBox(
                     isStubSource = isStubSource,
                     onCoverClick = onCoverClick,
                     doSearch = doSearch,
+                    alternativeTitle = alternativeTitle,
                 )
             } else {
                 MangaAndSourceTitlesLarge(
@@ -166,6 +169,7 @@ fun MangaInfoBox(
                     isStubSource = isStubSource,
                     onCoverClick = onCoverClick,
                     doSearch = doSearch,
+                    alternativeTitle = alternativeTitle,
                 )
             }
         }
@@ -350,6 +354,7 @@ private fun MangaAndSourceTitlesLarge(
     isStubSource: Boolean,
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
+    alternativeTitle: String? = null,
 ) {
     Column(
         modifier = Modifier
@@ -376,6 +381,7 @@ private fun MangaAndSourceTitlesLarge(
             isStubSource = isStubSource,
             doSearch = doSearch,
             textAlign = TextAlign.Center,
+            alternativeTitle = alternativeTitle,
         )
     }
 }
@@ -388,6 +394,7 @@ private fun MangaAndSourceTitlesSmall(
     isStubSource: Boolean,
     onCoverClick: () -> Unit,
     doSearch: (query: String, global: Boolean) -> Unit,
+    alternativeTitle: String? = null,
 ) {
     Row(
         modifier = Modifier
@@ -418,6 +425,7 @@ private fun MangaAndSourceTitlesSmall(
                 source = source,
                 isStubSource = isStubSource,
                 doSearch = doSearch,
+                alternativeTitle = alternativeTitle,
             )
         }
     }
@@ -433,6 +441,7 @@ private fun ColumnScope.MangaContentInfo(
     isStubSource: Boolean,
     doSearch: (query: String, global: Boolean) -> Unit,
     textAlign: TextAlign? = LocalTextStyle.current.textAlign,
+    alternativeTitle: String? = null,
 ) {
     val context = LocalContext.current
     Text(
@@ -451,6 +460,21 @@ private fun ColumnScope.MangaContentInfo(
         ),
         textAlign = textAlign,
     )
+
+    // Yomikae: the same work's title in the other language (unified entry).
+    if (!alternativeTitle.isNullOrBlank()) {
+        Text(
+            text = alternativeTitle,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier
+                .secondaryItemAlpha()
+                .clickableNoIndication(
+                    onLongClick = { context.copyToClipboard(alternativeTitle, alternativeTitle) },
+                    onClick = { doSearch(alternativeTitle, true) },
+                ),
+            textAlign = textAlign,
+        )
+    }
 
     Spacer(modifier = Modifier.height(2.dp))
 
