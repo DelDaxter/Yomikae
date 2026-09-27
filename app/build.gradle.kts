@@ -34,7 +34,7 @@ android {
     namespace = "eu.kanade.tachiyomi"
 
     defaultConfig {
-        applicationId = "app.mihon"
+        applicationId = "app.yomikae"
 
         versionCode = 30
         versionName = "0.20.4"
