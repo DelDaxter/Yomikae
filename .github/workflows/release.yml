@@ -3,6 +3,11 @@ on:
   push:
     tags:
       - v*
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and publish (for example v0.1.0)"
+        required: true
 
 env:
   MIHON_GITHUB_RELEASE: true
@@ -19,12 +24,19 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
       - name: Tag name
         id: tag
-        run: echo "tag=${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF/refs\/tags\//}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
 
       - name: Set up JDK
         uses: actions/setup-java@v4
