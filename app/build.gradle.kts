@@ -36,8 +36,8 @@ android {
     defaultConfig {
         applicationId = "app.yomikae"
 
-        versionCode = 31
-        versionName = "0.1.0"
+        versionCode = 32
+        versionName = "0.1.1"
 
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")

@@ -99,3 +99,9 @@
     public <init>();
     public void destroy();
 }
+
+# Yomikae: ONNX Runtime (PaddleOCR) and LiteRT-LM (local translation) reach their Java classes
+# from native code (JNI), which the shrinker cannot see: keeping them whole avoids the
+# "JNI DETECTED ERROR: mid == null" abort in release builds.
+-keep class ai.onnxruntime.** { *; }
+-keep class com.google.ai.edge.** { *; }
