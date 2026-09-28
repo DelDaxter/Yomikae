@@ -138,8 +138,9 @@ object SettingsTranslationScreen : SearchableSettings {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
         val downloader = remember { ModelDownloader(context) }
-        val specs = remember { listOf(LocalLlmBackend.MODEL) }
-        var status by remember { mutableStateOf(ModelStatus.read(downloader, specs)) }
+        val variant by preferences.localModel.collectAsState()
+        val specs = remember(variant) { listOf(LocalLlmBackend.spec(variant)) }
+        var status by remember(variant) { mutableStateOf(ModelStatus.read(downloader, specs)) }
         var busy by remember { mutableStateOf(false) }
         var error by remember { mutableStateOf<String?>(null) }
 
@@ -154,6 +155,15 @@ object SettingsTranslationScreen : SearchableSettings {
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pref_translation_group_local),
             preferenceItems = listOf(
+                Preference.PreferenceItem.ListPreference(
+                    preference = preferences.localModel,
+                    entries = mapOf(
+                        LocalLlmBackend.VARIANT_INT8 to stringResource(MR.strings.translation_model_int8),
+                        LocalLlmBackend.VARIANT_INT4 to stringResource(MR.strings.translation_model_int4),
+                    ),
+                    title = stringResource(MR.strings.pref_translation_local_model),
+                    enabled = !busy,
+                ),
                 // Always visible (Mihon hides disabled items): the row shows the model's state.
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.translation_model_name),

@@ -33,8 +33,11 @@ import tachiyomi.i18n.MR
 class LocalLlmBackend(
     private val context: Context,
     private val useGpu: Boolean,
+    private val variant: String = VARIANT_INT8,
     private val onDownloadProgress: ModelDownloader.Progress? = null,
 ) : LlmBackend {
+
+    private val model: ModelDownloader.Spec get() = spec(variant)
 
     /** Measured on a Galaxy S26: 60 pairs cost about 4 s of prefill per page; 12 cost under 1 s. */
     override val maxReferencePairs: Int = 12
@@ -44,11 +47,11 @@ class LocalLlmBackend(
 
     override suspend fun prepare() {
         // The model is downloaded once, and never silently on a metered connection.
-        if (!downloader.isReady(GROUP, listOf(MODEL)) && context.connectivityManager.isActiveNetworkMetered) {
+        if (!downloader.isReady(GROUP, listOf(model)) && context.connectivityManager.isActiveNetworkMetered) {
             error(context.stringResource(MR.strings.translation_model_needs_wifi))
         }
-        downloader.ensure(GROUP, listOf(MODEL), onDownloadProgress)
-        val path = downloader.file(GROUP, MODEL).path
+        downloader.ensure(GROUP, listOf(model), onDownloadProgress)
+        val path = downloader.file(GROUP, model).path
         withIOContext {
             engine = openEngine(path)
         }
@@ -130,14 +133,33 @@ class LocalLlmBackend(
         /** Whole prompt + answer budget; a page of ten bubbles with references fits in 1500. */
         private const val CONTEXT_TOKENS = 4096
 
+        /** int8 (reference quality, works well on CPU too) or int4 (smaller, faster decoding on the GPU). */
+        const val VARIANT_INT8 = "int8"
+        const val VARIANT_INT4 = "int4"
+        val VARIANTS = listOf(VARIANT_INT8, VARIANT_INT4)
+
         /** litert-community/Hy-MT2-1.8B, int8, checksum from its `litertlm_manifest.json`. */
-        val MODEL = ModelDownloader.Spec(
+        val MODEL_INT8 = ModelDownloader.Spec(
             fileName = "Hy-MT2-1.8B_int8.litertlm",
             url = "https://huggingface.co/litert-community/Hy-MT2-1.8B/resolve/main/Hy-MT2-1.8B_int8.litertlm",
             sha256 = "529e6d378df5869d89a5a08717c06604105a32d8a4dab4800175d6baabc4da50",
             sizeBytes = 1_815_622_960L,
         )
 
-        fun isModelReady(context: Context): Boolean = ModelDownloader(context).isReady(GROUP, listOf(MODEL))
+        /**
+         * Same model in int4 (blockwise-32 OCTAV, int8 embedding), converted by Yomikae with
+         * hf-to-litertlm / litert-torch from tencent/Hy-MT2-1.8B and published with the app.
+         */
+        val MODEL_INT4 = ModelDownloader.Spec(
+            fileName = "Hy-MT2-1.8B_int4_block32.litertlm",
+            url = "https://github.com/DelDaxter/Yomikae/releases/download/models-v1/Hy-MT2-1.8B_int4_block32.litertlm",
+            sha256 = "b945906678c2b13826f0481c0eca5b9f657f38393fa48bb4abc98f23d68416cc",
+            sizeBytes = 1_512_649_232L,
+        )
+
+        fun spec(variant: String): ModelDownloader.Spec = if (variant == VARIANT_INT4) MODEL_INT4 else MODEL_INT8
+
+        fun isModelReady(context: Context, variant: String): Boolean =
+            ModelDownloader(context).isReady(GROUP, listOf(spec(variant)))
     }
 }

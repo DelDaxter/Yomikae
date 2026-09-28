@@ -973,6 +973,9 @@
     <string name="pref_translation_local_gpu">Utiliser le GPU</string>
     <string name="pref_translation_local_gpu_summary">Plus rapide ; repli sur le CPU si l\'appareil refuse</string>
     <string name="translation_model_name">Hy-MT2 1.8B (Tencent, Apache-2.0)</string>
+    <string name="pref_translation_local_model">Fichier du modèle</string>
+    <string name="translation_model_int8">int8 · 1,8 Go · qualité de référence, convient au CPU</string>
+    <string name="translation_model_int4">int4 · 1,5 Go · plus rapide sur GPU, qualité légèrement moindre</string>
     <string name="translation_model_missing">Non téléchargé (%1$d Mo). Appuyer pour télécharger en Wi-Fi.</string>
     <string name="translation_model_partial">%1$d %% de %2$d Mo téléchargés. Appuyer pour reprendre.</string>
     <string name="translation_model_downloading">Téléchargement… %1$d %%</string>

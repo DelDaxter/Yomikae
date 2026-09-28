@@ -46,6 +46,12 @@ class TranslationPreferences(
     /** Pause the translation while Android reports the phone as too hot. */
     val pauseWhenHot: Preference<Boolean> = preferenceStore.getBoolean("translation_pause_when_hot", true)
 
+    /** Which file of the embedded model: [LocalLlmBackend.VARIANT_INT8] or [LocalLlmBackend.VARIANT_INT4]. */
+    val localModel: Preference<String> = preferenceStore.getString(
+        "translation_local_model",
+        LocalLlmBackend.VARIANT_INT8,
+    )
+
     /** Run the embedded model on the GPU (faster, falls back to CPU when the driver refuses). */
     val localLlmGpu: Preference<Boolean> = preferenceStore.getBoolean("translation_local_llm_gpu", true)
 

@@ -218,6 +218,7 @@ class ChapterTranslationJob(
             TextTranslator.ENGINE_LOCAL -> LocalLlmBackend(
                 context,
                 useGpu = preferences.localLlmGpu.get(),
+                variant = preferences.localModel.get(),
                 onDownloadProgress = { name, done, total ->
                     val percent = if (total > 0) (done * 100 / total).toInt() else 0
                     logcat { "Model $name: ${done / 1_000_000} / ${total / 1_000_000} MB" }
