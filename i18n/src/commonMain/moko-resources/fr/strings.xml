@@ -943,6 +943,8 @@
     <string name="pref_translation_prefetch_summary">Le chapitre en cours et le suivant sont traduits en arrière-plan s\'ils sont téléchargés</string>
     <string name="pref_translation_auto_downloads">Traduire les nouveaux téléchargements</string>
     <string name="pref_translation_auto_downloads_summary">Chaque chapitre téléchargé est mis en file de traduction. Chaque série peut décider autrement depuis sa fiche.</string>
+    <string name="pref_translation_delete_with_download">Supprimer les traductions avec le téléchargement</string>
+    <string name="pref_translation_delete_with_download_summary">Quand un chapitre téléchargé est supprimé (à la main ou automatiquement après lecture), ses pages traduites le sont aussi. Désactivé : les pages traduites sont conservées et restent affichées quand le chapitre est lu en ligne.</string>
     <string name="series_memory_title">Mémoire de série</string>
     <string name="series_memory_reference">Édition de référence (déjà traduite)</string>
     <string name="series_memory_reference_none">Aucune. Choisis la même série dans ta bibliothèque, traduite par des humains.</string>
@@ -971,6 +973,9 @@
     <string name="pref_translation_local_gpu">Utiliser le GPU</string>
     <string name="pref_translation_local_gpu_summary">Plus rapide ; repli sur le CPU si l\'appareil refuse</string>
     <string name="translation_model_name">Hy-MT2 1.8B (Tencent, Apache-2.0)</string>
+    <string name="pref_translation_local_model">Fichier du modèle</string>
+    <string name="translation_model_int8">int8 · 1,8 Go · qualité de référence, convient au CPU</string>
+    <string name="translation_model_int4">int4 · 1,5 Go · plus rapide sur GPU, qualité légèrement moindre</string>
     <string name="translation_model_missing">Non téléchargé (%1$d Mo). Appuyer pour télécharger en Wi-Fi.</string>
     <string name="translation_model_partial">%1$d %% de %2$d Mo téléchargés. Appuyer pour reprendre.</string>
     <string name="translation_model_downloading">Téléchargement… %1$d %%</string>

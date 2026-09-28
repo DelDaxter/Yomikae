@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
+import mihon.feature.translation.TranslationPreferences
 import mihon.feature.translation.TranslationQueue
 import mihon.feature.translation.TranslationStore
 import tachiyomi.core.common.i18n.stringResource
@@ -56,6 +57,7 @@ class DownloadManager(
     // Yomikae: translated pages live next to the downloads and go away with them
     private val translationStore: TranslationStore,
     private val translationQueue: TranslationQueue,
+    private val translationPreferences: TranslationPreferences,
     private val getChaptersByMangaId: GetChaptersByMangaId,
 ) {
 
@@ -298,12 +300,15 @@ class DownloadManager(
     }
 
     /**
-     * Yomikae: a translation only makes sense for a downloaded chapter, so it is deleted (and
-     * dequeued) together with the download.
+     * Yomikae: the translated pages of a chapter go away with its download, unless the user
+     * chose to keep them (the reader still shows them for an online chapter). A pending
+     * translation is always dequeued: it needs the downloaded pages.
      */
     private fun deleteTranslations(chapters: List<Chapter>) {
+        val keep = !translationPreferences.deleteWithDownload.get()
         chapters.forEach { chapter ->
             translationQueue.remove(chapter.id)
+            if (keep) return@forEach
             translationStore.deleteChapter(chapter.id)
         }
     }

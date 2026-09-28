@@ -9,6 +9,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionStoresScreen
 import eu.kanade.tachiyomi.util.system.AuthenticatorUtil.authenticate
@@ -55,6 +56,17 @@ object SettingsBrowseScreen : SearchableSettings {
             Preference.PreferenceGroup(
                 title = stringResource(MR.strings.pref_category_extensions),
                 preferenceItems = listOf(
+                    // Yomikae: mute or space out the "extensions to update" notification.
+                    Preference.PreferenceItem.ListPreference(
+                        preference = sourcePreferences.extensionUpdateNotifications,
+                        entries = mapOf(
+                            SourcePreferences.EXT_NOTIFY_ALWAYS to stringResource(MR.strings.ext_update_notify_always),
+                            SourcePreferences.EXT_NOTIFY_DAILY to stringResource(MR.strings.ext_update_notify_daily),
+                            SourcePreferences.EXT_NOTIFY_NEVER to stringResource(MR.strings.ext_update_notify_never),
+                        ),
+                        title = stringResource(MR.strings.pref_ext_update_notifications),
+                        subtitle = stringResource(MR.strings.pref_ext_update_notifications_summary),
+                    ),
                     Preference.PreferenceItem.MultiSelectListPreference(
                         preference = sourcePreferences.enabledContentWarnings,
                         entries = mapOf(

@@ -267,6 +267,11 @@
     <string name="firebase_summary">Sending crash logs and analytics will allow us to identify and fix issues, improve performance, and make future updates more relevant to your needs</string>
 
     <string name="pref_category_extensions">Extensions</string>
+    <string name="pref_ext_update_notifications">Extension update notifications</string>
+    <string name="pref_ext_update_notifications_summary">The badge in Browse › Extensions stays in every case</string>
+    <string name="ext_update_notify_always">At every check</string>
+    <string name="ext_update_notify_daily">At most once a day</string>
+    <string name="ext_update_notify_never">Never</string>
     <string name="pref_allowed_content_warnings">Allowed content warnings</string>
     <string name="pref_apply_content_warnings_to_installed">Also apply to installed extensions</string>
     <string name="pref_apply_content_warnings_to_installed_summary">When off, extensions you already installed keep loading and updating regardless of their warning</string>
@@ -1151,6 +1156,8 @@
     <string name="pref_translation_prefetch_summary">The chapter being read and the next one are translated in the background when they are downloaded</string>
     <string name="pref_translation_auto_downloads">Translate new downloads</string>
     <string name="pref_translation_auto_downloads_summary">Every downloaded chapter is queued for translation. Each series can override this from its page.</string>
+    <string name="pref_translation_delete_with_download">Delete translations with the download</string>
+    <string name="pref_translation_delete_with_download_summary">When a downloaded chapter is deleted (by hand or automatically after reading), its translated pages are deleted too. Off: the translated pages are kept and still shown when the chapter is read online.</string>
     <string name="series_memory_title">Series memory</string>
     <string name="series_memory_reference">Reference edition (already translated)</string>
     <string name="series_memory_reference_none">None. Pick the same series in your library, translated by humans.</string>
@@ -1179,6 +1186,9 @@
     <string name="pref_translation_local_gpu">Use the GPU</string>
     <string name="pref_translation_local_gpu_summary">Faster; falls back to the CPU if the device refuses</string>
     <string name="translation_model_name">Hy-MT2 1.8B (Tencent, Apache-2.0)</string>
+    <string name="pref_translation_local_model">Model file</string>
+    <string name="translation_model_int8">int8 · 1.8 GB · reference quality, fine on CPU</string>
+    <string name="translation_model_int4">int4 · 1.5 GB · faster on the GPU, slightly lower quality</string>
     <string name="translation_model_missing">Not downloaded (%1$d MB). Tap to download over Wi-Fi.</string>
     <string name="translation_model_partial">%1$d%% of %2$d MB downloaded. Tap to resume.</string>
     <string name="translation_model_downloading">Downloading… %1$d%%</string>
