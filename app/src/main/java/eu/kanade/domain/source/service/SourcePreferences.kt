@@ -69,6 +69,23 @@ class SourcePreferences(
 
     val extensionUpdatesCount: Preference<Int> = preferenceStore.getInt("ext_updates_count", 0)
 
+    /**
+     * Yomikae: how often the "extensions to update" notification may show. The badge in
+     * Browse > Extensions is not affected. Values: [EXT_NOTIFY_ALWAYS], [EXT_NOTIFY_DAILY],
+     * [EXT_NOTIFY_NEVER].
+     */
+    val extensionUpdateNotifications: Preference<String> =
+        preferenceStore.getString("ext_update_notifications", EXT_NOTIFY_ALWAYS)
+
+    /** When the notification was last shown (epoch ms), for the daily mode. */
+    val extensionUpdateNotifiedAt: Preference<Long> = preferenceStore.getLong("ext_update_notified_at", 0L)
+
+    companion object {
+        const val EXT_NOTIFY_ALWAYS = "always"
+        const val EXT_NOTIFY_DAILY = "daily"
+        const val EXT_NOTIFY_NEVER = "never"
+    }
+
     val trustedExtensions: Preference<Set<String>> = preferenceStore.getStringSet(
         Preference.appStateKey("trusted_extensions"),
         emptySet(),

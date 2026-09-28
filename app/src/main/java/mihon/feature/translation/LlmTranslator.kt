@@ -37,6 +37,10 @@ class LlmTranslator(
     /** What this run translated, so the job can remember the short lines afterwards. */
     val translated: Map<String, String> get() = cache
 
+    /** Conversation state: references already in the model's context, turns since the last reset. */
+    private val sentPairs = HashSet<String>()
+    private var turns = 0
+
     override suspend fun prepare() {
         backend.prepare()
     }
@@ -82,32 +86,56 @@ class LlmTranslator(
         }
     }
 
+    /**
+     * One page = one turn of a conversation that lasts the chapter. The first turn carries the
+     * references, the background and the rules; the next ones only the new references and the
+     * page ("Next page, same rules"). The model keeps the earlier turns in its context, which
+     * also helps consistency between pages (measured on the PC bench: +0.01). The conversation
+     * restarts when its context nears the window ([CONTEXT_RESET_TOKENS]) or after [MAX_TURNS].
+     */
     private suspend fun askForPage(lines: List<String>, pairs: List<Pair<String, String>>): List<String?> {
+        val reset = turns == 0 || turns >= MAX_TURNS || backend.conversationTokens() > CONTEXT_RESET_TOKENS
+        val newPairs = if (reset) pairs else pairs.filter { it.first !in sentPairs }
         val prompt = buildString {
-            if (pairs.isNotEmpty()) {
-                appendLine("Reference the following translations:")
-                pairs.forEach { (from, to) -> appendLine("`$from` translates to `$to`") }
+            if (newPairs.isNotEmpty()) {
+                appendLine(if (reset) "Reference the following translations:" else "Also reference these translations:")
+                newPairs.forEach { (from, to) -> appendLine("`$from` translates to `$to`") }
                 appendLine()
             }
-            appendLine("[Background Information]")
-            appendLine(background.ifBlank { DEFAULT_BACKGROUND })
-            appendLine()
-            appendLine(
-                "Please accurately translate the following text into ${languageName(targetLanguage)}, " +
-                    "taking the provided background information into consideration. " +
-                    "Each line below is one speech bubble and starts with its number and a vertical bar. " +
-                    "Translate every line, keep exactly the same number of lines, and start each translated line " +
-                    "with the same number and vertical bar as its source line. " +
-                    "A line that is only a sound effect or onomatopoeia becomes a short comic-book sound effect " +
-                    "in capitals (KEKEKE, ACK!, WHOOSH), not a description. " +
-                    (if (keepHonorifics) HONORIFICS_RULE else "") +
-                    "Only output the translated lines without any additional explanation.",
-            )
+            if (reset) {
+                appendLine("[Background Information]")
+                appendLine(background.ifBlank { DEFAULT_BACKGROUND })
+                appendLine()
+                appendLine(
+                    "Please accurately translate the following text into ${languageName(targetLanguage)}, " +
+                        "taking the provided background information into consideration. " +
+                        "Each line below is one speech bubble and starts with its number and a vertical bar. " +
+                        "Translate every line, keep exactly the same number of lines, and start each translated " +
+                        "line with the same number and vertical bar as its source line. " +
+                        "A line that is only a sound effect or onomatopoeia becomes a short comic-book sound " +
+                        "effect in capitals (KEKEKE, ACK!, WHOOSH), not a description. " +
+                        (if (keepHonorifics) HONORIFICS_RULE else "") +
+                        "Only output the translated lines without any additional explanation. " +
+                        "I will send the pages one by one; answer each page the same way.",
+                )
+            } else {
+                appendLine("Next page, same rules:")
+            }
             appendLine()
             lines.forEachIndexed { i, line -> appendLine("${i + 1}| ${line.replace('\n', ' ')}") }
         }
 
-        val answer = backend.complete(prompt)
+        val answer = try {
+            backend.chat(prompt, reset)
+        } catch (e: LlmBackend.ConversationLostException) {
+            // The runtime refused to continue the conversation: start a new one with everything.
+            logcat(LogPriority.WARN, e) { "LLM conversation lost, restarting it" }
+            turns = 0
+            return askForPage(lines, pairs)
+        }
+        if (reset) sentPairs.clear()
+        sentPairs += pairs.map { it.first }
+        turns = if (reset) 1 else turns + 1
         val byNumber = HashMap<Int, String>()
         val numbered = ArrayList<String>()
         val plain = ArrayList<String>()
@@ -156,6 +184,10 @@ class LlmTranslator(
         const val TOP_P = 0.6
         const val TOP_K = 20
         const val MAX_OUTPUT_TOKENS = 1024
+
+        /** The embedded model has a 4096-token window; a full first turn is under 1000. */
+        private const val CONTEXT_RESET_TOKENS = 2800
+        private const val MAX_TURNS = 20
 
         private val LINE_PATTERN = Regex("""^([0-9N]+)\s*[|｜]\s*(.*)$""")
         private const val HONORIFICS_RULE =

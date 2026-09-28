@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.extension.api
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.extension.model.Extension
 import mihon.domain.extension.interactor.UpdateExtensionStores
 import mihon.domain.extension.repository.ExtensionStoreRepository
@@ -14,6 +15,7 @@ class ExtensionApi(
     private val repository: ExtensionStoreRepository,
     private val updateExtensionStores: UpdateExtensionStores,
     private val extensionUpdateNotifier: ExtensionUpdateNotifier,
+    private val sourcePreferences: SourcePreferences,
 ) {
 
     suspend fun findExtensions(): List<Extension.Available> {
@@ -41,8 +43,21 @@ class ExtensionApi(
             }
         }
 
-        if (extensionsWithUpdate.isNotEmpty()) {
+        if (extensionsWithUpdate.isNotEmpty() && shouldNotify()) {
+            sourcePreferences.extensionUpdateNotifiedAt.set(System.currentTimeMillis())
             extensionUpdateNotifier.promptUpdates(extensionsWithUpdate.map { it.name })
         }
+    }
+
+    /** Yomikae: the user chooses how often the notification may come back (badge unaffected). */
+    private fun shouldNotify(): Boolean = when (sourcePreferences.extensionUpdateNotifications.get()) {
+        SourcePreferences.EXT_NOTIFY_NEVER -> false
+        SourcePreferences.EXT_NOTIFY_DAILY ->
+            System.currentTimeMillis() - sourcePreferences.extensionUpdateNotifiedAt.get() >= DAY_MS
+        else -> true
+    }
+
+    private companion object {
+        const val DAY_MS = 24L * 60 * 60 * 1000
     }
 }

@@ -267,6 +267,11 @@
     <string name="firebase_summary">Sending crash logs and analytics will allow us to identify and fix issues, improve performance, and make future updates more relevant to your needs</string>
 
     <string name="pref_category_extensions">Extensions</string>
+    <string name="pref_ext_update_notifications">Extension update notifications</string>
+    <string name="pref_ext_update_notifications_summary">The badge in Browse › Extensions stays in every case</string>
+    <string name="ext_update_notify_always">At every check</string>
+    <string name="ext_update_notify_daily">At most once a day</string>
+    <string name="ext_update_notify_never">Never</string>
     <string name="pref_allowed_content_warnings">Allowed content warnings</string>
     <string name="pref_apply_content_warnings_to_installed">Also apply to installed extensions</string>
     <string name="pref_apply_content_warnings_to_installed_summary">When off, extensions you already installed keep loading and updating regardless of their warning</string>

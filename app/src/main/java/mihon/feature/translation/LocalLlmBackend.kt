@@ -3,10 +3,12 @@ package mihon.feature.translation
 import android.content.Context
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.BenchmarkInfo
+import com.google.ai.edge.litertlm.Conversation
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
+import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.google.ai.edge.litertlm.SamplerConfig
 import eu.kanade.tachiyomi.util.system.connectivityManager
 import logcat.LogPriority
@@ -44,6 +46,7 @@ class LocalLlmBackend(
 
     private val downloader = ModelDownloader(context)
     private var engine: Engine? = null
+    private var conversation: Conversation? = null
 
     override suspend fun prepare() {
         // The model is downloaded once, and never silently on a metered connection.
@@ -58,7 +61,15 @@ class LocalLlmBackend(
     }
 
     /** GPU first when asked, CPU as fallback: the GPU delegate can refuse a device or a driver. */
+    @OptIn(ExperimentalApi::class)
     private fun openEngine(path: String): Engine {
+        // Per-page prefill/decode statistics (getBenchmarkInfo) are only collected with this flag.
+        ExperimentalFlags.enableBenchmark = true
+        // Hy-MT2's own template ends a finished conversation with an end-of-text marker that
+        // the runtime then cannot extend with a new turn ("new rendered template string does
+        // not start with the previous"): the same template without that marker, so a
+        // conversation can last a whole chapter.
+        ExperimentalFlags.overwritePromptTemplate = HY_MT2_TEMPLATE
         val backends = if (useGpu) listOf(Backend.GPU(), Backend.CPU()) else listOf(Backend.CPU())
         var failure: Throwable? = null
         for (backend in backends) {
@@ -83,52 +94,94 @@ class LocalLlmBackend(
         throw IllegalStateException("Cannot load the local translation model", failure)
     }
 
-    @OptIn(ExperimentalApi::class)
+    private fun conversationConfig() = ConversationConfig(
+        samplerConfig = SamplerConfig(
+            topK = LlmTranslator.TOP_K,
+            topP = LlmTranslator.TOP_P,
+            temperature = LlmTranslator.TEMPERATURE,
+        ),
+        maxOutputToken = LlmTranslator.MAX_OUTPUT_TOKENS,
+    )
+
+    /** A conversation of its own: nothing remembered, nothing to disturb the session one. */
     override suspend fun complete(prompt: String): String = withIOContext {
         val engine = engine ?: error("Local LLM not prepared")
-        // One conversation per page: the model must not remember the previous page's answer,
-        // and a fresh context keeps the prompt short and the speed constant.
-        val config = ConversationConfig(
-            samplerConfig = SamplerConfig(
-                topK = LlmTranslator.TOP_K,
-                topP = LlmTranslator.TOP_P,
-                temperature = LlmTranslator.TEMPERATURE,
-            ),
-            maxOutputToken = LlmTranslator.MAX_OUTPUT_TOKENS,
-        )
-        engine.createConversation(config).use { conversation ->
+        engine.createConversation(conversationConfig()).use { conversation ->
             val started = System.nanoTime()
             val answer = conversation.sendMessage(prompt).toString()
-            val elapsed = (System.nanoTime() - started) / 1e9
-            // Where the time goes (prefill = reading the prompt, decode = writing the answer):
-            // the numbers that decide whether a shorter prompt or a faster model helps more.
-            val b: BenchmarkInfo? = runCatching<BenchmarkInfo> { conversation.getBenchmarkInfo() }.getOrNull()
-            if (b != null) {
-                logcat {
-                    (
-                        "Local LLM page: %.2fs total, prefill %d tok @ %.0f tok/s (ttft %.2fs), " +
-                            "decode %d tok @ %.1f tok/s"
-                        ).format(
-                        elapsed,
-                        b.lastPrefillTokenCount,
-                        b.lastPrefillTokensPerSecond,
-                        b.timeToFirstTokenInSecond,
-                        b.lastDecodeTokenCount,
-                        b.lastDecodeTokensPerSecond,
-                    )
-                }
-            }
+            logTiming(conversation, started)
             answer
         }
     }
 
+    override suspend fun chat(turn: String, reset: Boolean): String = withIOContext {
+        val engine = engine ?: error("Local LLM not prepared")
+        val current = conversation?.takeIf { !reset && it.isAlive } ?: run {
+            runCatching { conversation?.close() }
+            engine.createConversation(conversationConfig()).also { conversation = it }
+        }
+        val started = System.nanoTime()
+        // Trimmed: the runtime re-renders the whole history with the chat template at every turn
+        // and requires the new rendering to extend the previous one byte for byte.
+        val answer = try {
+            current.sendMessage(turn.trim()).toString()
+        } catch (e: Exception) {
+            if (reset) throw e
+            runCatching { current.close() }
+            conversation = null
+            throw LlmBackend.ConversationLostException(e)
+        }
+        logTiming(current, started)
+        answer
+    }
+
+    override fun conversationTokens(): Int = runCatching { conversation?.getTokenCount() ?: 0 }.getOrDefault(0)
+
+    /**
+     * Where the time goes (prefill = reading the prompt, decode = writing the answer): the
+     * numbers that decide whether a shorter prompt or a faster model helps more. Measured on a
+     * Galaxy S26: ~800 prompt tokens at 220 tok/s against 12-40 answer tokens, so prefill wins.
+     */
+    @OptIn(ExperimentalApi::class)
+    private fun logTiming(conversation: Conversation, started: Long) {
+        val elapsed = (System.nanoTime() - started) / 1e9
+        val b: BenchmarkInfo = runCatching<BenchmarkInfo> { conversation.getBenchmarkInfo() }.getOrNull() ?: return
+        logcat {
+            (
+                "Local LLM turn: %.2fs total, prefill %d tok @ %.0f tok/s (ttft %.2fs), " +
+                    "decode %d tok @ %.1f tok/s, context %d tok"
+                ).format(
+                elapsed,
+                b.lastPrefillTokenCount,
+                b.lastPrefillTokensPerSecond,
+                b.timeToFirstTokenInSecond,
+                b.lastDecodeTokenCount,
+                b.lastDecodeTokensPerSecond,
+                conversationTokens(),
+            )
+        }
+    }
+
     override fun close() {
+        runCatching { conversation?.close() }
+        conversation = null
         runCatching { engine?.close() }
         engine = null
     }
 
     companion object {
         const val GROUP = "llm"
+
+        /** tencent/Hy-MT2-1.8B `chat_template.jinja`, minus the trailing `<|hy_place_holder_no_8|>`. */
+        private const val HY_MT2_TEMPLATE =
+            "{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}" +
+                "{% set system_message = messages[0]['content'] %}<｜hy_begin▁of▁sentence｜>" +
+                "{{ system_message }}<｜hy_place▁holder▁no▁3｜>{% else %}" +
+                "{% set loop_messages = messages %}<｜hy_begin▁of▁sentence｜>{% endif %}" +
+                "{% for message in loop_messages %}{% if message['role'] == 'user' %}<｜hy_User｜>" +
+                "{{ message['content'] }}{% elif message['role'] == 'assistant' %}<｜hy_Assistant｜>" +
+                "{{ message['content'] }}<｜hy_place▁holder▁no▁2｜>{% endif %}{% endfor %}" +
+                "{% if add_generation_prompt %}<｜hy_Assistant｜>{% endif %}"
 
         /** Whole prompt + answer budget; a page of ten bubbles with references fits in 1500. */
         private const val CONTEXT_TOKENS = 4096

@@ -44,18 +44,36 @@ class HttpLlmBackend(
         complete("Reply with the single word OK.")
     }
 
-    override suspend fun complete(prompt: String): String = withIOContext {
+    /** The conversation so far, as (role, content) pairs, for [chat]. */
+    private val history = ArrayList<Pair<String, String>>()
+
+    override suspend fun complete(prompt: String): String = request(listOf("user" to prompt))
+
+    override suspend fun chat(turn: String, reset: Boolean): String {
+        if (reset) history.clear()
+        history += "user" to turn
+        val answer = request(history)
+        history += "assistant" to answer
+        return answer
+    }
+
+    /** Rough token count (Korean and English both run at about three characters per token). */
+    override fun conversationTokens(): Int = history.sumOf { it.second.length } / 3
+
+    private suspend fun request(messages: List<Pair<String, String>>): String = withIOContext {
         val body = buildJsonObject {
             put("model", model.ifBlank { "default" })
             put(
                 "messages",
                 buildJsonArray {
-                    add(
-                        buildJsonObject {
-                            put("role", "user")
-                            put("content", prompt)
-                        },
-                    )
+                    messages.forEach { (role, content) ->
+                        add(
+                            buildJsonObject {
+                                put("role", role)
+                                put("content", content)
+                            },
+                        )
+                    }
                 },
             )
             put("temperature", LlmTranslator.TEMPERATURE)
