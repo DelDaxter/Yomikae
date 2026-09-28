@@ -943,6 +943,8 @@
     <string name="pref_translation_prefetch_summary">Le chapitre en cours et le suivant sont traduits en arrière-plan s\'ils sont téléchargés</string>
     <string name="pref_translation_auto_downloads">Traduire les nouveaux téléchargements</string>
     <string name="pref_translation_auto_downloads_summary">Chaque chapitre téléchargé est mis en file de traduction. Chaque série peut décider autrement depuis sa fiche.</string>
+    <string name="pref_translation_delete_with_download">Supprimer les traductions avec le téléchargement</string>
+    <string name="pref_translation_delete_with_download_summary">Quand un chapitre téléchargé est supprimé (à la main ou automatiquement après lecture), ses pages traduites le sont aussi. Désactivé : les pages traduites sont conservées et restent affichées quand le chapitre est lu en ligne.</string>
     <string name="series_memory_title">Mémoire de série</string>
     <string name="series_memory_reference">Édition de référence (déjà traduite)</string>
     <string name="series_memory_reference_none">Aucune. Choisis la même série dans ta bibliothèque, traduite par des humains.</string>

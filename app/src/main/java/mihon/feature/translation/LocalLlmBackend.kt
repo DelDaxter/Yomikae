@@ -2,9 +2,11 @@ package mihon.feature.translation
 
 import android.content.Context
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.BenchmarkInfo
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.SamplerConfig
 import eu.kanade.tachiyomi.util.system.connectivityManager
 import logcat.LogPriority
@@ -78,6 +80,7 @@ class LocalLlmBackend(
         throw IllegalStateException("Cannot load the local translation model", failure)
     }
 
+    @OptIn(ExperimentalApi::class)
     override suspend fun complete(prompt: String): String = withIOContext {
         val engine = engine ?: error("Local LLM not prepared")
         // One conversation per page: the model must not remember the previous page's answer,
@@ -91,7 +94,28 @@ class LocalLlmBackend(
             maxOutputToken = LlmTranslator.MAX_OUTPUT_TOKENS,
         )
         engine.createConversation(config).use { conversation ->
-            conversation.sendMessage(prompt).toString()
+            val started = System.nanoTime()
+            val answer = conversation.sendMessage(prompt).toString()
+            val elapsed = (System.nanoTime() - started) / 1e9
+            // Where the time goes (prefill = reading the prompt, decode = writing the answer):
+            // the numbers that decide whether a shorter prompt or a faster model helps more.
+            val b: BenchmarkInfo? = runCatching<BenchmarkInfo> { conversation.getBenchmarkInfo() }.getOrNull()
+            if (b != null) {
+                logcat {
+                    (
+                        "Local LLM page: %.2fs total, prefill %d tok @ %.0f tok/s (ttft %.2fs), " +
+                            "decode %d tok @ %.1f tok/s"
+                        ).format(
+                        elapsed,
+                        b.lastPrefillTokenCount,
+                        b.lastPrefillTokensPerSecond,
+                        b.timeToFirstTokenInSecond,
+                        b.lastDecodeTokenCount,
+                        b.lastDecodeTokensPerSecond,
+                    )
+                }
+            }
+            answer
         }
     }
 

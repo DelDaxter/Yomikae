@@ -62,6 +62,9 @@ class TranslationPreferences(
     /** Keep Korean forms of address (hyung, noona, -nim…) instead of adapting them. */
     val keepHonorifics: Preference<Boolean> = preferenceStore.getBoolean("translation_keep_honorifics", true)
 
+    /** Deleting a downloaded chapter also deletes its translated pages (off = keep them). */
+    val deleteWithDownload: Preference<Boolean> = preferenceStore.getBoolean("translation_delete_with_download", true)
+
     /** Global default: every finished download is queued for translation. */
     val autoTranslateDownloads: Preference<Boolean> = preferenceStore.getBoolean("translation_auto_downloads", false)
 

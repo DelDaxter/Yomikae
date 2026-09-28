@@ -1151,6 +1151,8 @@
     <string name="pref_translation_prefetch_summary">The chapter being read and the next one are translated in the background when they are downloaded</string>
     <string name="pref_translation_auto_downloads">Translate new downloads</string>
     <string name="pref_translation_auto_downloads_summary">Every downloaded chapter is queued for translation. Each series can override this from its page.</string>
+    <string name="pref_translation_delete_with_download">Delete translations with the download</string>
+    <string name="pref_translation_delete_with_download_summary">When a downloaded chapter is deleted (by hand or automatically after reading), its translated pages are deleted too. Off: the translated pages are kept and still shown when the chapter is read online.</string>
     <string name="series_memory_title">Series memory</string>
     <string name="series_memory_reference">Reference edition (already translated)</string>
     <string name="series_memory_reference_none">None. Pick the same series in your library, translated by humans.</string>
