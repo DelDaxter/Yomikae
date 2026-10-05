@@ -2,9 +2,11 @@
 
 <img src=".github/assets/logo-256.png" width="160" alt="Yomikae">
 
+**Français** · [English](README.en.md)
+
 # Yomikae
 
-### Lis tes webtoons coréens en anglais, traduits sur ton téléphone
+### Lis tes webtoons coréens en français ou en anglais, traduits sur ton téléphone
 
 Lecteur de manga et de webtoons pour Android qui traduit les pages automatiquement, **sans serveur ni
 compte** : lecture du texte, traduction et réécriture dans les bulles se font sur l'appareil.
@@ -41,13 +43,13 @@ disponible (moins bon, mais léger).
    *Explorer → Extensions* et installe celles que tu veux, par exemple **Naver Webtoon** pour les raws coréens
    officiels et **Webtoons.com** pour l'anglais officiel. Sur Naver, cherche les titres en coréen.
 3. **Prépare la traduction** : *Plus → Paramètres → Traduction*.
-   - *Langue d'origine* : coréen. *Langue cible* : anglais.
+   - *Langue d'origine* : coréen. *Langue cible* : français ou anglais.
    - *Moteur de traduction* : **Sur cet appareil**. Dans *Modèle embarqué*, appuie sur le modèle pour le télécharger
      (1,8 Go, une seule fois, en Wi-Fi).
    - *Lecture du texte (OCR)* : PaddleOCR, déjà dans l'APK, rien à télécharger.
 4. **Traduis un chapitre** : télécharge un chapitre coréen (icône ⬇ sur sa ligne), puis appuie sur l'icône de
    traduction 文A qui apparaît à côté. Suis l'avancement dans *Plus → File de traduction*. Ouvre le chapitre : il est
-   traduit. Compte 3 à 4 secondes par page sur un téléphone récent.
+   traduit. Compte 2 à 3 secondes par page sur un téléphone récent.
 
 ### Pour aller plus loin
 
@@ -56,7 +58,8 @@ disponible (moins bon, mais léger).
 - **Traduire les nouveaux téléchargements** : réglage global dans *Traduction*, ou série par série (fiche → ⋮ →
   *Traduction automatique…*).
 - **Fiche unifiée** : depuis la fiche à garder, ⋮ → *Fiche unifiée…*, coche les autres fiches de la même œuvre.
-  Le titre, le synopsis et les chapitres passent dans ta langue de lecture quand une édition l'a.
+  Le titre, le synopsis et les chapitres passent dans ta langue de lecture quand une édition l'a. Le bouton de langue
+  à côté de l'intervalle de mise à jour change la langue de lecture de cette série seulement.
 - **Mémoire de série** : fiche → ⋮ → *Mémoire de série* : choisis l'édition traduite de référence, *Lire le texte de la
   référence*, puis *Apparier les bulles*. Si les numéros de chapitres ne concordent pas entre les éditions (prologue
   compté « 1 » d'un côté), *Détecter* trouve le décalage.

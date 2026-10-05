@@ -79,4 +79,4 @@ jobs:
           set -e
           T=${{ steps.tag.outputs.tag }}
           gh release delete "$T" --yes 2>/dev/null || true
-          gh release create "$T" --title "Yomikae $T" --notes-file notes.md --generate-notes             "Yomikae-$T-arm64-v8a.apk#Yomikae-$T-arm64-v8a.apk — téléphones et tablettes Android (le bon dans 99 % des cas)"             "Yomikae-$T-autres-appareils.apk#Yomikae-$T-autres-appareils.apk — Chromebook, émulateur, x86"
+          gh release create "$T" --title "Yomikae $T" --notes-file notes.md --generate-notes             "Yomikae-$T-arm64-v8a.apk#Yomikae-$T-arm64-v8a.apk — Android phones & tablets · téléphones et tablettes (99 %)"             "Yomikae-$T-autres-appareils.apk#Yomikae-$T-autres-appareils.apk — Chromebook, emulator · émulateur, x86"
