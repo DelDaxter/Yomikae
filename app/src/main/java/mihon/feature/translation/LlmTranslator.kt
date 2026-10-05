@@ -126,7 +126,7 @@ class LlmTranslator(
         }
 
         val answer = try {
-            backend.chat(prompt, reset)
+            backend.chat(prompt, reset, answerBudget(lines))
         } catch (e: LlmBackend.ConversationLostException) {
             // The runtime refused to continue the conversation: start a new one with everything.
             logcat(LogPriority.WARN, e) { "LLM conversation lost, restarting it" }
@@ -157,6 +157,9 @@ class LlmTranslator(
             // has as many lines as the question, trust the order.
             byNumber.isEmpty() && plain.size == lines.size -> plain
             else -> {
+                // A broken answer stays in the conversation and the next pages imitate it: the
+                // next page starts a fresh conversation instead.
+                turns = 0
                 logcat(LogPriority.WARN) {
                     "LLM answered ${plain.size} lines (${byNumber.size} numbered) for ${lines.size}: ${answer.take(
                         200,
@@ -171,7 +174,7 @@ class LlmTranslator(
     private suspend fun translateSingle(line: String): String {
         val prompt = "Translate the following text into ${languageName(targetLanguage)}. " +
             "Note that you should only output the translated result without any additional explanation:\n\n$line"
-        return backend.complete(prompt).trim().trim('`', '"')
+        return backend.complete(prompt, answerBudget(listOf(line))).trim().trim('`', '"')
     }
 
     override fun close() {
@@ -184,6 +187,13 @@ class LlmTranslator(
         const val TOP_P = 0.6
         const val TOP_K = 20
         const val MAX_OUTPUT_TOKENS = 1024
+
+        /**
+         * Answer budget for a page: a Korean syllable becomes at most ~2 English or French
+         * tokens, plus the "N| " prefixes and some margin. Caps a looping answer early.
+         */
+        fun answerBudget(lines: List<String>): Int =
+            (48 + lines.size * 6 + lines.sumOf { it.length } * 3).coerceAtMost(MAX_OUTPUT_TOKENS)
 
         /** The embedded model has a 4096-token window; a full first turn is under 1000. */
         private const val CONTEXT_RESET_TOKENS = 2800
