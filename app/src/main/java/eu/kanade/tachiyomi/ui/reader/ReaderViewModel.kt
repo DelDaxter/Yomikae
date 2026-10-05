@@ -244,7 +244,7 @@ class ReaderViewModel(
             members = infos,
             targetLanguage = translationPreferences.readingLanguage(group.primaryMangaId),
             sourceLanguage = translationPreferences.sourceLanguage.get(),
-            isTranslated = translationStore::isChapterTranslated,
+            isTranslated = { chapter -> translationStore.isChapterTranslated(chapter.id, chapter.mangaId) },
             translatedLabel = "",
             preferredChapterId = selectedChapterId,
             isDownloaded = { chapter ->
@@ -616,7 +616,7 @@ class ReaderViewModel(
                 val id = chapter.id ?: return@mapNotNull null
                 val owner = mangaOfChapter(chapter) ?: return@mapNotNull null
                 val ready = translationQueue.statusOf(id) == null &&
-                    !translationStore.isChapterTranslated(id) &&
+                    !translationStore.isChapterTranslated(id, chapter.manga_id) &&
                     downloadManager.isChapterDownloaded(
                         chapter.name,
                         chapter.scanlator,
@@ -924,8 +924,9 @@ class ReaderViewModel(
 
     /** Yomikae: true when at least one page of the current chapter has a translation. */
     fun hasTranslationForCurrentChapter(): Boolean {
-        val chapterId = state.value.viewerChapters?.currChapter?.chapter?.id ?: return false
-        return translationStore.hasAnyTranslatedPage(chapterId)
+        val chapter = state.value.viewerChapters?.currChapter?.chapter ?: return false
+        val chapterId = chapter.id ?: return false
+        return translationStore.hasAnyTranslatedPage(chapterId, chapter.manga_id)
     }
 
     fun toggleCropBorders(): Boolean {

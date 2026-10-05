@@ -518,9 +518,15 @@ class MangaViewModel(
      */
     fun showReadingLanguageDialog() {
         val manga = successState?.manga ?: return
-        val target = translationPreferences.targetLanguage.get()
+        // A raw can be translated: into the global language, or into any language the engine
+        // supports when the series follows its own reading language.
         val hasRaw = translationPreferences.sourceLanguage.get() in entryLanguages
-        val options = (listOfNotNull(target.takeIf { hasRaw }) + entryLanguages).distinct()
+        val translatable = when {
+            !hasRaw -> emptyList()
+            translationPreferences.followReadingLanguage.get() -> TranslationPreferences.TARGET_LANGUAGES
+            else -> listOf(translationPreferences.targetLanguage.get())
+        }
+        val options = (translatable + entryLanguages).distinct()
         updateSuccessState {
             it.copy(dialog = Dialog.ReadingLanguage(manga, translationPreferences.readingLanguage(manga.id), options))
         }
@@ -751,7 +757,7 @@ class MangaViewModel(
             members = infos,
             targetLanguage = target,
             sourceLanguage = translationPreferences.sourceLanguage.get(),
-            isTranslated = translationStore::isChapterTranslated,
+            isTranslated = { chapter -> translationStore.isChapterTranslated(chapter.id, chapter.mangaId) },
             translatedLabel = context.stringResource(MR.strings.merge_translated_label),
             isDownloaded = { chapter ->
                 val owner = mangas[chapter.mangaId]
@@ -851,7 +857,7 @@ class MangaViewModel(
                 TranslationQueue.Status.PENDING -> TranslationState.QUEUED
                 TranslationQueue.Status.RUNNING -> TranslationState.RUNNING
                 TranslationQueue.Status.ERROR -> TranslationState.ERROR
-                else -> if (downloaded && translationStore.isChapterTranslated(chapter.id)) {
+                else -> if (downloaded && translationStore.isChapterTranslated(chapter.id, chapter.mangaId)) {
                     TranslationState.DONE
                 } else {
                     TranslationState.NONE

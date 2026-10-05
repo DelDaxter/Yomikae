@@ -157,11 +157,12 @@ class ChapterTranslationJob(
 
         val mode = item.mode
         val sourceLanguage = preferences.sourceLanguage.get()
-        val targetLanguage = preferences.targetLanguage.get()
-        // Extract mode reads a human-translated edition: its pages are in the target language.
+        // Extract mode reads a human-translated reference edition, whose language is the global
+        // target; a translation goes into the series' own target (see TranslationStore.targetFor).
+        val targetLanguage = if (mode == MODE_EXTRACT) preferences.targetLanguage.get() else store.targetFor(manga.id)
         val extractOnly = mode == MODE_EXTRACT || sourceLanguage == targetLanguage
         val ocrLanguage = if (mode == MODE_EXTRACT) targetLanguage else sourceLanguage
-        val variant = if (mode == MODE_EXTRACT) extractVariant(targetLanguage) else store.currentVariant()
+        val variant = if (mode == MODE_EXTRACT) extractVariant(targetLanguage) else store.currentVariant(manga.id)
 
         val engineSet = engines.getOrPut("${manga.id}:$mode:$variant") {
             // Series memory: human examples, user glossary and lines already translated.

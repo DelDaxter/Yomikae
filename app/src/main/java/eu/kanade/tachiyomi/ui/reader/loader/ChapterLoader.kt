@@ -51,7 +51,9 @@ class ChapterLoader(
                     .onEach { it.chapter = chapter }
 
                 // Yomikae: swap in translated pages when the user asked for them.
-                chapter.chapter.id?.let { context.appGraph.translationStore.applyTo(it, pages) }
+                chapter.chapter.id?.let {
+                    context.appGraph.translationStore.applyTo(it, chapter.chapter.manga_id, pages)
+                }
 
                 if (pages.isEmpty()) {
                     throw Exception(context.stringResource(MR.strings.page_list_empty_error))
