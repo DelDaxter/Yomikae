@@ -47,12 +47,13 @@ class HttpLlmBackend(
     /** The conversation so far, as (role, content) pairs, for [chat]. */
     private val history = ArrayList<Pair<String, String>>()
 
-    override suspend fun complete(prompt: String): String = request(listOf("user" to prompt))
+    override suspend fun complete(prompt: String, maxOutputTokens: Int): String =
+        request(listOf("user" to prompt), maxOutputTokens)
 
-    override suspend fun chat(turn: String, reset: Boolean): String {
+    override suspend fun chat(turn: String, reset: Boolean, maxOutputTokens: Int): String {
         if (reset) history.clear()
         history += "user" to turn
-        val answer = request(history)
+        val answer = request(history, maxOutputTokens)
         history += "assistant" to answer
         return answer
     }
@@ -60,7 +61,7 @@ class HttpLlmBackend(
     /** Rough token count (Korean and English both run at about three characters per token). */
     override fun conversationTokens(): Int = history.sumOf { it.second.length } / 3
 
-    private suspend fun request(messages: List<Pair<String, String>>): String = withIOContext {
+    private suspend fun request(messages: List<Pair<String, String>>, maxOutputTokens: Int): String = withIOContext {
         val body = buildJsonObject {
             put("model", model.ifBlank { "default" })
             put(
@@ -80,7 +81,7 @@ class HttpLlmBackend(
             put("top_p", LlmTranslator.TOP_P)
             put("top_k", LlmTranslator.TOP_K)
             put("repeat_penalty", 1.05)
-            put("max_tokens", LlmTranslator.MAX_OUTPUT_TOKENS)
+            put("max_tokens", maxOutputTokens)
             put("stream", false)
         }
         val request = Request.Builder()

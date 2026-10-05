@@ -55,6 +55,11 @@ object SettingsTranslationScreen : SearchableSettings {
                 title = stringResource(MR.strings.pref_translation_target_language),
             ),
             Preference.PreferenceItem.SwitchPreference(
+                preference = preferences.followReadingLanguage,
+                title = stringResource(MR.strings.pref_translation_follow_reading_language),
+                subtitle = stringResource(MR.strings.pref_translation_follow_reading_language_summary),
+            ),
+            Preference.PreferenceItem.SwitchPreference(
                 preference = preferences.showTranslated,
                 title = stringResource(MR.strings.pref_translation_show),
                 subtitle = stringResource(MR.strings.pref_translation_show_summary),

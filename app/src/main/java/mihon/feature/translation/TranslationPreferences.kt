@@ -108,6 +108,20 @@ class TranslationPreferences(
         readingLanguageOverrides.get().firstOrNull { it.startsWith("$mangaId:") }?.substringAfter(':')
             ?: targetLanguage.get()
 
+    /**
+     * On: a series is translated into its own reading language (the language button of its
+     * page) when that language is one the engine can translate into. Off: every series is
+     * translated into [targetLanguage].
+     */
+    val followReadingLanguage: Preference<Boolean> =
+        preferenceStore.getBoolean("translation_follow_reading_language", true)
+
+    /** Language the chapters of this series are translated into (primary entry id of a unified entry). */
+    fun translationTarget(mangaId: Long): String {
+        val reading = readingLanguage(mangaId)
+        return if (followReadingLanguage.get() && reading in TARGET_LANGUAGES) reading else targetLanguage.get()
+    }
+
     /** Choosing the global language again removes the override, so the series follows it. */
     fun setReadingLanguage(mangaId: Long, language: String) {
         val kept = readingLanguageOverrides.get().filterNot { it.startsWith("$mangaId:") }.toSet()

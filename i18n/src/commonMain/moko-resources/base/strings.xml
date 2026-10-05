@@ -1131,6 +1131,8 @@
     <string name="merge_dialog_title">Unified entry</string>
     <string name="merge_dialog_hint">Tick the library entries that are the same work (other sources, other languages). They leave the library grid and their chapters appear here, in the reading language when it exists.</string>
     <string name="merge_translated_label">translated</string>
+    <string name="pref_translation_follow_reading_language">Translate into each series\' reading language</string>
+    <string name="pref_translation_follow_reading_language_summary">On: the language button of a series page also decides the language its chapters are translated into. Off: every series is translated into the target language above.</string>
     <string name="reading_language_title">Reading language of this series</string>
     <string name="reading_language_hint">Title, synopsis and chapters come from the edition in this language when the unified entry has one; otherwise the raw translated on the phone comes first.</string>
     <string name="merge_show_original_synopsis">Show the original synopsis</string>

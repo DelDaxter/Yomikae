@@ -14,7 +14,7 @@ interface LlmBackend : Closeable {
     suspend fun prepare()
 
     /** One user prompt in, the model's whole answer out (a conversation of its own). */
-    suspend fun complete(prompt: String): String
+    suspend fun complete(prompt: String, maxOutputTokens: Int = LlmTranslator.MAX_OUTPUT_TOKENS): String
 
     /**
      * One turn of a conversation the model remembers: the rules, the references and the
@@ -23,7 +23,7 @@ interface LlmBackend : Closeable {
      * ~800 tokens: not re-reading them for every page is the biggest speed lever. [reset]
      * starts a fresh conversation (the first page, or when the context is nearly full).
      */
-    suspend fun chat(turn: String, reset: Boolean): String
+    suspend fun chat(turn: String, reset: Boolean, maxOutputTokens: Int = LlmTranslator.MAX_OUTPUT_TOKENS): String
 
     /** Tokens held by the current conversation (0 when none), so the caller resets in time. */
     fun conversationTokens(): Int

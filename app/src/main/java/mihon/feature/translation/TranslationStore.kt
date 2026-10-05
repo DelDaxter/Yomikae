@@ -5,6 +5,7 @@ import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
+import mihon.feature.merge.MangaGroupStore
 import mihon.feature.translation.ocr.OcrEngine
 import java.io.File
 import java.io.InputStream
@@ -22,7 +23,19 @@ import java.io.InputStream
 class TranslationStore(
     private val context: Context,
     private val preferences: TranslationPreferences,
+    private val groupStore: MangaGroupStore,
 ) {
+
+    /**
+     * Target language for a chapter of [mangaId]: the reading language of its series (the
+     * primary entry when it belongs to a unified entry) or the global one, see
+     * [TranslationPreferences.translationTarget].
+     */
+    fun targetFor(mangaId: Long?): String {
+        if (mangaId == null) return preferences.targetLanguage.get()
+        val primary = groupStore.groupOfMember(mangaId)?.primaryMangaId ?: mangaId
+        return preferences.translationTarget(primary)
+    }
 
     private val root: File
         get() = File(context.filesDir, "translations")
@@ -32,8 +45,8 @@ class TranslationStore(
      * original layout) and "<source>-<target>-<engine>" for the other engines, so switching
      * engine never shows a page made by another one.
      */
-    fun currentVariant(): String {
-        val base = "${preferences.sourceLanguage.get()}-${preferences.targetLanguage.get()}"
+    fun currentVariant(mangaId: Long? = null): String {
+        val base = "${preferences.sourceLanguage.get()}-${targetFor(mangaId)}"
         val engine = preferences.engine.get()
         val ocr = preferences.ocrEngine.get()
         val withEngine = if (engine == TextTranslator.ENGINE_MLKIT) base else "$base-$engine"
@@ -62,11 +75,12 @@ class TranslationStore(
     }
 
     /** True when the chapter has been fully translated with the current settings. */
-    fun isChapterTranslated(chapterId: Long): Boolean = doneMarker(chapterId, currentVariant()).exists()
+    fun isChapterTranslated(chapterId: Long, mangaId: Long?): Boolean =
+        doneMarker(chapterId, currentVariant(mangaId)).exists()
 
     /** True when at least one page of the chapter is translated with the current settings. */
-    fun hasAnyTranslatedPage(chapterId: Long): Boolean {
-        val dir = chapterDir(chapterId, currentVariant())
+    fun hasAnyTranslatedPage(chapterId: Long, mangaId: Long?): Boolean {
+        val dir = chapterDir(chapterId, currentVariant(mangaId))
         return dir.listFiles { f -> f.extension == "jpg" }?.isNotEmpty() == true
     }
 
@@ -79,20 +93,21 @@ class TranslationStore(
      * the user asked for translated pages. The decision is taken at read time, so toggling the
      * preference and reloading the viewer is enough to switch between original and translation.
      */
-    fun applyTo(chapterId: Long, pages: List<ReaderPage>) {
+    fun applyTo(chapterId: Long, mangaId: Long?, pages: List<ReaderPage>) {
         pages.forEach { page ->
             val original = page.stream ?: return@forEach
-            page.stream = { openTranslatedOrOriginal(chapterId, page.index, original) }
+            page.stream = { openTranslatedOrOriginal(chapterId, mangaId, page.index, original) }
         }
     }
 
     private fun openTranslatedOrOriginal(
         chapterId: Long,
+        mangaId: Long?,
         pageIndex: Int,
         original: () -> InputStream,
     ): InputStream {
         if (!preferences.showTranslated.get()) return original()
-        val file = pageFile(chapterId, pageIndex, currentVariant())
+        val file = pageFile(chapterId, pageIndex, currentVariant(mangaId))
         return if (file.exists()) file.inputStream() else original()
     }
 }

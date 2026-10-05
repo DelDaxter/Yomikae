@@ -9,6 +9,7 @@ import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
 import com.google.ai.edge.litertlm.ExperimentalApi
 import com.google.ai.edge.litertlm.ExperimentalFlags
+import com.google.ai.edge.litertlm.RepetitionPenaltyConfig
 import com.google.ai.edge.litertlm.SamplerConfig
 import eu.kanade.tachiyomi.util.system.connectivityManager
 import logcat.LogPriority
@@ -104,17 +105,17 @@ class LocalLlmBackend(
     )
 
     /** A conversation of its own: nothing remembered, nothing to disturb the session one. */
-    override suspend fun complete(prompt: String): String = withIOContext {
+    override suspend fun complete(prompt: String, maxOutputTokens: Int): String = withIOContext {
         val engine = engine ?: error("Local LLM not prepared")
         engine.createConversation(conversationConfig()).use { conversation ->
             val started = System.nanoTime()
-            val answer = conversation.sendMessage(prompt).toString()
+            val answer = send(conversation, prompt, maxOutputTokens)
             logTiming(conversation, started)
             answer
         }
     }
 
-    override suspend fun chat(turn: String, reset: Boolean): String = withIOContext {
+    override suspend fun chat(turn: String, reset: Boolean, maxOutputTokens: Int): String = withIOContext {
         val engine = engine ?: error("Local LLM not prepared")
         val current = conversation?.takeIf { !reset && it.isAlive } ?: run {
             runCatching { conversation?.close() }
@@ -124,7 +125,7 @@ class LocalLlmBackend(
         // Trimmed: the runtime re-renders the whole history with the chat template at every turn
         // and requires the new rendering to extend the previous one byte for byte.
         val answer = try {
-            current.sendMessage(turn.trim()).toString()
+            send(current, turn.trim(), maxOutputTokens)
         } catch (e: Exception) {
             if (reset) throw e
             runCatching { current.close() }
@@ -134,6 +135,21 @@ class LocalLlmBackend(
         logTiming(current, started)
         answer
     }
+
+    /**
+     * One message with the answer capped to what the page needs and Tencent's recommended
+     * repetition penalty (1.05). Without them a small model that starts looping (spaces, a
+     * syllable over and over) writes until the 1024-token limit: ~85 s lost on a phone.
+     */
+    private fun send(conversation: Conversation, text: String, maxOutputTokens: Int): String =
+        conversation.sendMessage(
+            text,
+            emptyMap(),
+            RepetitionPenaltyConfig(REPETITION_PENALTY),
+            null,
+            null,
+            maxOutputTokens,
+        ).toString()
 
     override fun conversationTokens(): Int = runCatching { conversation?.getTokenCount() ?: 0 }.getOrDefault(0)
 
@@ -171,6 +187,8 @@ class LocalLlmBackend(
 
     companion object {
         const val GROUP = "llm"
+
+        private const val REPETITION_PENALTY = 1.05f
 
         /** tencent/Hy-MT2-1.8B `chat_template.jinja`, minus the trailing `<|hy_place_holder_no_8|>`. */
         private const val HY_MT2_TEMPLATE =
