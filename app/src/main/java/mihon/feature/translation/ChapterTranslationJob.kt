@@ -233,14 +233,21 @@ class ChapterTranslationJob(
             )
             else -> return MlKitTranslator(sourceLanguage, targetLanguage)
         }
+        // The default glossary and the series memory hold English renderings (KO -> EN glossary,
+        // pairs aligned with an English edition): sent to a French translation they would pull
+        // English words into it, so they only go with an English target.
+        val englishReferences = targetLanguage == "en"
         return LlmTranslator(
             backend = backend,
             targetLanguage = targetLanguage,
             background = preferences.llmBackground.get(),
-            memory = memory,
-            knownLines = memory.lines,
-            globalGlossary = SeriesMemoryStore.parseGlossaryText(preferences.globalGlossary.get())
-                .map { it.source to it.target },
+            memory = memory.takeIf { englishReferences },
+            knownLines = if (englishReferences) memory.lines else emptyMap(),
+            globalGlossary = if (englishReferences) {
+                SeriesMemoryStore.parseGlossaryText(preferences.globalGlossary.get()).map { it.source to it.target }
+            } else {
+                emptyList()
+            },
             keepHonorifics = preferences.keepHonorifics.get(),
         )
     }
