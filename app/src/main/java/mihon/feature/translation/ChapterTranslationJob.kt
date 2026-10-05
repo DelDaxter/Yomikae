@@ -194,7 +194,8 @@ class ChapterTranslationJob(
 
         val finished = translateChapter(engineSet.page, manga, source, chapter, variant)
         val text = engineSet.text
-        if (finished && text is LlmTranslator) rememberShortLines(manga.id, text.translated)
+        // The memory keeps English renderings only (see createTextTranslator).
+        if (finished && text is LlmTranslator && targetLanguage == "en") rememberShortLines(manga.id, text.translated)
     }
 
     /** Picks the OCR engine from the settings; PaddleOCR only for the languages it covers. */
