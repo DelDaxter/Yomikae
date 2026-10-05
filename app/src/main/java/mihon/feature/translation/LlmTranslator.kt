@@ -104,7 +104,7 @@ class LlmTranslator(
             }
             if (reset) {
                 appendLine("[Background Information]")
-                appendLine(background.ifBlank { DEFAULT_BACKGROUND })
+                appendLine(background.ifBlank { defaultBackground(targetLanguage) })
                 appendLine()
                 appendLine(
                     "Please accurately translate the following text into ${languageName(targetLanguage)}, " +
@@ -192,10 +192,21 @@ class LlmTranslator(
         private val LINE_PATTERN = Regex("""^([0-9N]+)\s*[|｜]\s*(.*)$""")
         private const val HONORIFICS_RULE =
             "Keep Korean forms of address as fans expect them (hyung, noona, oppa, unnie, sunbae, ahjussi, " +
-                "-nim, -ssi) instead of replacing them with English titles. "
-        private const val DEFAULT_BACKGROUND =
-            "These are the speech bubbles of one page of a Korean webtoon, in reading order. " +
-                "Use natural spoken English as in published comics. Keep character names consistent."
+                "-nim, -ssi) instead of replacing them with titles of the target language. "
+
+        /**
+         * Background in the target language: Hy-MT2 follows the register of this block, and an
+         * English one ("natural spoken English") is the wrong hint for a French translation.
+         */
+        private fun defaultBackground(target: String): String = when (target) {
+            "fr" ->
+                "Ce sont les bulles d'une page d'un webtoon coréen, dans l'ordre de lecture. " +
+                    "Utilise un français oral naturel, comme dans les scans et les éditions françaises de webtoons. " +
+                    "Garde les noms des personnages identiques d'une page à l'autre."
+            else ->
+                "These are the speech bubbles of one page of a Korean webtoon, in reading order. " +
+                    "Use natural spoken English as in published comics. Keep character names consistent."
+        }
 
         private fun languageName(tag: String): String =
             Locale(tag).getDisplayLanguage(Locale.ENGLISH).ifBlank { tag }
